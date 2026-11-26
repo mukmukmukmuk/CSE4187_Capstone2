@@ -1,0 +1,16 @@
+{
+  "model": "gamma_gamma_gross_4w",
+  "calibration": "feature_window",
+  "transaction_period": "D",
+  "penalizer": 0.0,
+  "params": {
+    "p": 2.1259427227346803,
+    "q": 6.231305385204364,
+    "v": 11649.153989688188
+  },
+  "converged": true,
+  "repeat_customers": 1548,
+  "population_mean_value": 4734.083049411919,
+  "scale": 1.4585933007247176,
+  "train_buyers": 1328
+}

@@ -1,6 +1,6 @@
 {
-  "clv_version": "0.3.0",
-  "created_at": "2026-11-26T07:32:34+00:00",
+  "clv_version": "0.4.0",
+  "created_at": "2026-11-26T09:37:18+00:00",
   "reference_week": "2024-12-30T00:00:00+09:00",
   "horizon_weeks": 52,
   "input_weeks": 13,
@@ -95,10 +95,6 @@
       ]
     },
     "gross_4w_grid": {
-      "objective": [
-        "reg:squarederror",
-        "reg:gamma"
-      ],
       "max_depth": [
         3,
         5
@@ -110,7 +106,11 @@
       "learning_rate": [
         0.05
       ]
-    }
+    },
+    "gross_4w_final_model": "auto",
+    "gross_4w_cv_folds": 5,
+    "gross_4w_cv_repeats": 3,
+    "gross_4w_bootstrap": 1000
   },
   "predictors": [
     "purchase_count_4w",
@@ -634,7 +634,7 @@
     }
   },
   "gross_4w": {
-    "model": "xgboost_gross_4w",
+    "model": "mean_gross_4w",
     "status": "trained",
     "target_definition_id": "gross_amount_4w_if_purchase_v1",
     "training_population": "control_no_coupon customers with a complete 4-week window and at least one purchase in it",
@@ -644,105 +644,332 @@
       "test": 463
     },
     "details": {
-      "version": "3.4.1",
-      "best_params": {
-        "n_estimators": 41,
-        "subsample": 0.8,
-        "colsample_bytree": 0.8,
-        "reg_lambda": 1.0,
-        "tree_method": "hist",
-        "n_jobs": 1,
-        "learning_rate": 0.05,
-        "max_depth": 3,
-        "min_child_weight": 5,
-        "objective": "reg:gamma"
-      },
-      "grid_results": [
-        {
-          "learning_rate": 0.05,
-          "max_depth": 3,
-          "min_child_weight": 1,
-          "objective": "reg:squarederror",
-          "n_estimators": 15,
-          "validation_rmse": 7478.244478262253,
-          "validation_mae": 4648.314646166425
-        },
-        {
-          "learning_rate": 0.05,
-          "max_depth": 3,
-          "min_child_weight": 1,
-          "objective": "reg:gamma",
-          "n_estimators": 41,
-          "validation_rmse": 7438.201368858541,
-          "validation_mae": 4538.599819449491
-        },
-        {
-          "learning_rate": 0.05,
-          "max_depth": 3,
-          "min_child_weight": 5,
-          "objective": "reg:squarederror",
-          "n_estimators": 15,
-          "validation_rmse": 7476.060136483352,
-          "validation_mae": 4645.3981161428055
-        },
-        {
-          "learning_rate": 0.05,
-          "max_depth": 3,
-          "min_child_weight": 5,
-          "objective": "reg:gamma",
-          "n_estimators": 41,
-          "validation_rmse": 7432.846438571356,
-          "validation_mae": 4533.671140307049
-        },
-        {
-          "learning_rate": 0.05,
-          "max_depth": 5,
-          "min_child_weight": 1,
-          "objective": "reg:squarederror",
-          "n_estimators": 3,
-          "validation_rmse": 7475.859109563953,
-          "validation_mae": 4665.966660610465
-        },
-        {
-          "learning_rate": 0.05,
-          "max_depth": 5,
-          "min_child_weight": 1,
-          "objective": "reg:gamma",
-          "n_estimators": 22,
-          "validation_rmse": 7448.701712178708,
-          "validation_mae": 4520.847031704215
-        },
-        {
-          "learning_rate": 0.05,
-          "max_depth": 5,
-          "min_child_weight": 5,
-          "objective": "reg:squarederror",
-          "n_estimators": 4,
-          "validation_rmse": 7470.576442749676,
-          "validation_mae": 4668.426787336482
-        },
-        {
-          "learning_rate": 0.05,
-          "max_depth": 5,
-          "min_child_weight": 5,
-          "objective": "reg:gamma",
-          "n_estimators": 31,
-          "validation_rmse": 7435.632470216504,
-          "validation_mae": 4488.569328556504
-        }
-      ],
-      "skipped_objectives": [],
-      "train_buyers": 1328,
-      "validation_buyers": 430,
-      "zero_gross_buyers": 0,
-      "clipped_negative_predictions": 0
+      "value": 6924.5873493975905,
+      "train_buyers": 1328
     },
     "test_metrics": {
       "n": 463,
-      "mae": 6013.7947162273895,
-      "rmse": 12855.919089492947,
+      "mae": 6137.9927853964455,
+      "rmse": 12810.770474577721,
       "mean_actual": 7709.866090712743,
-      "mean_predicted": 6558.668621549338
+      "mean_predicted": 6924.587349397592
+    },
+    "trained_models": [
+      "mean_gross_4w",
+      "gamma_gamma_gross_4w",
+      "xgboost_gross_4w",
+      "xgboost_gamma_gross_4w"
+    ],
+    "candidate_status": {
+      "mean_gross_4w": "trained",
+      "gamma_gamma_gross_4w": "trained",
+      "xgboost_gross_4w": "trained",
+      "xgboost_gamma_gross_4w": "trained"
+    },
+    "candidate_details": {
+      "mean_gross_4w": {
+        "value": 6924.5873493975905,
+        "train_buyers": 1328
+      },
+      "gamma_gamma_gross_4w": {
+        "calibration": "feature_window",
+        "transaction_period": "D",
+        "penalizer": 0.0,
+        "params": {
+          "p": 2.1259427227346803,
+          "q": 6.231305385204364,
+          "v": 11649.153989688188
+        },
+        "converged": true,
+        "repeat_customers": 1548,
+        "population_mean_value": 4734.083049411919,
+        "scale": 1.4585933007247176,
+        "train_buyers": 1328
+      },
+      "xgboost_gross_4w": {
+        "best_params": {
+          "n_estimators": 4,
+          "subsample": 0.8,
+          "colsample_bytree": 0.8,
+          "reg_lambda": 1.0,
+          "tree_method": "hist",
+          "n_jobs": 1,
+          "learning_rate": 0.05,
+          "max_depth": 5,
+          "min_child_weight": 5,
+          "objective": "reg:squarederror"
+        },
+        "grid_results": [
+          {
+            "learning_rate": 0.05,
+            "max_depth": 3,
+            "min_child_weight": 1,
+            "objective": "reg:squarederror",
+            "n_estimators": 15,
+            "validation_rmse": 7478.244478262253,
+            "validation_mae": 4648.314646166425
+          },
+          {
+            "learning_rate": 0.05,
+            "max_depth": 3,
+            "min_child_weight": 5,
+            "objective": "reg:squarederror",
+            "n_estimators": 15,
+            "validation_rmse": 7476.060136483352,
+            "validation_mae": 4645.3981161428055
+          },
+          {
+            "learning_rate": 0.05,
+            "max_depth": 5,
+            "min_child_weight": 1,
+            "objective": "reg:squarederror",
+            "n_estimators": 3,
+            "validation_rmse": 7475.859109563953,
+            "validation_mae": 4665.966660610465
+          },
+          {
+            "learning_rate": 0.05,
+            "max_depth": 5,
+            "min_child_weight": 5,
+            "objective": "reg:squarederror",
+            "n_estimators": 4,
+            "validation_rmse": 7470.576442749676,
+            "validation_mae": 4668.426787336482
+          }
+        ],
+        "skipped_objectives": [],
+        "train_buyers": 1328,
+        "validation_buyers": 430,
+        "zero_gross_buyers": 0,
+        "version": "3.4.1",
+        "clipped_negative_predictions": 0
+      },
+      "xgboost_gamma_gross_4w": {
+        "best_params": {
+          "n_estimators": 41,
+          "subsample": 0.8,
+          "colsample_bytree": 0.8,
+          "reg_lambda": 1.0,
+          "tree_method": "hist",
+          "n_jobs": 1,
+          "learning_rate": 0.05,
+          "max_depth": 3,
+          "min_child_weight": 5,
+          "objective": "reg:gamma"
+        },
+        "grid_results": [
+          {
+            "learning_rate": 0.05,
+            "max_depth": 3,
+            "min_child_weight": 1,
+            "objective": "reg:gamma",
+            "n_estimators": 41,
+            "validation_rmse": 7438.201368858541,
+            "validation_mae": 4538.599819449491
+          },
+          {
+            "learning_rate": 0.05,
+            "max_depth": 3,
+            "min_child_weight": 5,
+            "objective": "reg:gamma",
+            "n_estimators": 41,
+            "validation_rmse": 7432.846438571356,
+            "validation_mae": 4533.671140307049
+          },
+          {
+            "learning_rate": 0.05,
+            "max_depth": 5,
+            "min_child_weight": 1,
+            "objective": "reg:gamma",
+            "n_estimators": 22,
+            "validation_rmse": 7448.701712178708,
+            "validation_mae": 4520.847031704215
+          },
+          {
+            "learning_rate": 0.05,
+            "max_depth": 5,
+            "min_child_weight": 5,
+            "objective": "reg:gamma",
+            "n_estimators": 31,
+            "validation_rmse": 7435.632470216504,
+            "validation_mae": 4488.569328556504
+          }
+        ],
+        "skipped_objectives": [],
+        "train_buyers": 1328,
+        "validation_buyers": 430,
+        "zero_gross_buyers": 0,
+        "version": "3.4.1",
+        "clipped_negative_predictions": 0
+      }
+    },
+    "candidate_test_metrics": {
+      "mean_gross_4w": {
+        "n": 463,
+        "mae": 6137.9927853964455,
+        "rmse": 12810.770474577721,
+        "bias": -785.2787413151525,
+        "mean_actual": 7709.866090712743,
+        "mean_predicted": 6924.587349397592,
+        "spearman": null,
+        "draws": 1000,
+        "mae_ci95": [
+          5208.9272496031645,
+          7264.625950128809
+        ],
+        "rmse_ci95": [
+          8604.006457847774,
+          16962.12458213461
+        ],
+        "mean_actual_ci95": [
+          6601.340280777538,
+          8886.769654427646
+        ],
+        "mean_predicted_ci95": [
+          6924.587349397592,
+          6924.587349397592
+        ]
+      },
+      "gamma_gamma_gross_4w": {
+        "n": 463,
+        "mae": 6167.2661628598435,
+        "rmse": 12870.666689699116,
+        "bias": -769.8618844671652,
+        "mean_actual": 7709.866090712743,
+        "mean_predicted": 6940.004206245579,
+        "spearman": -0.029660707818886953,
+        "draws": 1000,
+        "mae_ci95": [
+          5234.291860139689,
+          7302.620795429178
+        ],
+        "rmse_ci95": [
+          8692.21687951161,
+          17037.48464887269
+        ],
+        "mean_actual_ci95": [
+          6601.340280777538,
+          8886.769654427646
+        ],
+        "mean_predicted_ci95": [
+          6858.667382613275,
+          7027.101145315666
+        ]
+      },
+      "xgboost_gross_4w": {
+        "n": 463,
+        "mae": 6127.5400833558315,
+        "rmse": 12819.446769762122,
+        "bias": -807.3612205554806,
+        "mean_actual": 7709.866090712743,
+        "mean_predicted": 6902.504870157262,
+        "spearman": -0.03799463850052586,
+        "draws": 1000,
+        "mae_ci95": [
+          5216.949015132501,
+          7238.9825638509465
+        ],
+        "rmse_ci95": [
+          8608.175641357326,
+          16975.752749586154
+        ],
+        "mean_actual_ci95": [
+          6601.340280777538,
+          8886.769654427646
+        ],
+        "mean_predicted_ci95": [
+          6881.90770326948,
+          6925.325566585533
+        ]
+      },
+      "xgboost_gamma_gross_4w": {
+        "n": 463,
+        "mae": 6013.7947162273895,
+        "rmse": 12855.919089492947,
+        "bias": -1151.1974691634043,
+        "mean_actual": 7709.866090712743,
+        "mean_predicted": 6558.668621549338,
+        "spearman": -0.04535107384681623,
+        "draws": 1000,
+        "mae_ci95": [
+          5072.927375915396,
+          7137.141254571704
+        ],
+        "rmse_ci95": [
+          8639.977507051724,
+          17042.47057196741
+        ],
+        "mean_actual_ci95": [
+          6601.340280777538,
+          8886.769654427646
+        ],
+        "mean_predicted_ci95": [
+          6505.251670860472,
+          6609.115151377734
+        ]
+      }
+    },
+    "selection": {
+      "rule": "one-standard-error rule on repeated K-fold out-of-fold squared error over train + validation buyers: the simplest candidate whose mean squared error is within one paired standard error of the best candidate",
+      "metric": "squared_error",
+      "folds": 5,
+      "repeats": 3,
+      "customers": 1758,
+      "mean_actual": 6808.484072810012,
+      "candidate_order": [
+        "mean_gross_4w",
+        "gamma_gamma_gross_4w",
+        "xgboost_gross_4w",
+        "xgboost_gamma_gross_4w"
+      ],
+      "table": [
+        {
+          "model": "mean_gross_4w",
+          "cv_mse": 78764752.28661297,
+          "cv_rmse": 8874.950832912427,
+          "mse_minus_best": 0.0,
+          "se_of_difference": 0.0,
+          "within_one_se": true,
+          "best": true,
+          "selected": true,
+          "cv_mean_predicted": 6808.449321002205
+        },
+        {
+          "model": "gamma_gamma_gross_4w",
+          "cv_mse": 80384648.73847614,
+          "cv_rmse": 8965.748643503015,
+          "mse_minus_best": 1619896.4518631753,
+          "se_of_difference": 676764.7554801353,
+          "within_one_se": false,
+          "best": false,
+          "selected": false,
+          "cv_mean_predicted": 6808.286070153442
+        },
+        {
+          "model": "xgboost_gross_4w",
+          "cv_mse": 79715844.3432935,
+          "cv_rmse": 8928.372995305108,
+          "mse_minus_best": 951092.0566805241,
+          "se_of_difference": 302749.6520181424,
+          "within_one_se": false,
+          "best": false,
+          "selected": false,
+          "cv_mean_predicted": 6804.811564266478
+        },
+        {
+          "model": "xgboost_gamma_gross_4w",
+          "cv_mse": 79331354.43815203,
+          "cv_rmse": 8906.815055795872,
+          "mse_minus_best": 566602.1515390634,
+          "se_of_difference": 225246.96191277262,
+          "within_one_se": false,
+          "best": false,
+          "selected": false,
+          "cv_mean_predicted": 6559.374023576374
+        }
+      ],
+      "excluded": {},
+      "chosen": "mean_gross_4w"
     }
   },
   "warnings": [

@@ -1,0 +1,126 @@
+{
+  "model": "xgboost_gamma_gross_4w",
+  "feature_names": [
+    "purchase_count_4w",
+    "purchase_count_13w",
+    "session_count_4w",
+    "session_count_13w",
+    "net_spend_4w",
+    "net_spend_13w",
+    "weeks_since_last_purchase",
+    "purchase_active_weeks_13w",
+    "zero_purchase_streak",
+    "purchase_trend",
+    "spend_trend",
+    "purchase_per_session_13w",
+    "weeks_since_last_session",
+    "session_active_weeks_13w",
+    "session_trend",
+    "avg_paid_per_purchase_13w",
+    "coupon_sent_13w"
+  ],
+  "feature_dtypes": {
+    "purchase_count_4w": "float64",
+    "purchase_count_13w": "float64",
+    "session_count_4w": "float64",
+    "session_count_13w": "float64",
+    "net_spend_4w": "float64",
+    "net_spend_13w": "float64",
+    "weeks_since_last_purchase": "float64",
+    "purchase_active_weeks_13w": "float64",
+    "zero_purchase_streak": "float64",
+    "purchase_trend": "float64",
+    "spend_trend": "float64",
+    "purchase_per_session_13w": "float64",
+    "weeks_since_last_session": "float64",
+    "session_active_weeks_13w": "float64",
+    "session_trend": "float64",
+    "avg_paid_per_purchase_13w": "float64",
+    "coupon_sent_13w": "float64"
+  },
+  "seed": 42,
+  "grid": {
+    "max_depth": [
+      3,
+      5
+    ],
+    "min_child_weight": [
+      1,
+      5
+    ],
+    "learning_rate": [
+      0.05
+    ],
+    "objective": [
+      "reg:gamma"
+    ]
+  },
+  "fixed": {
+    "n_estimators": 1000,
+    "early_stopping_rounds": 50,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "reg_lambda": 1.0,
+    "tree_method": "hist",
+    "n_jobs": 1
+  },
+  "best_params": {
+    "n_estimators": 41,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "reg_lambda": 1.0,
+    "tree_method": "hist",
+    "n_jobs": 1,
+    "learning_rate": 0.05,
+    "max_depth": 3,
+    "min_child_weight": 5,
+    "objective": "reg:gamma"
+  },
+  "grid_results": [
+    {
+      "learning_rate": 0.05,
+      "max_depth": 3,
+      "min_child_weight": 1,
+      "objective": "reg:gamma",
+      "n_estimators": 41,
+      "validation_rmse": 7438.201368858541,
+      "validation_mae": 4538.599819449491
+    },
+    {
+      "learning_rate": 0.05,
+      "max_depth": 3,
+      "min_child_weight": 5,
+      "objective": "reg:gamma",
+      "n_estimators": 41,
+      "validation_rmse": 7432.846438571356,
+      "validation_mae": 4533.671140307049
+    },
+    {
+      "learning_rate": 0.05,
+      "max_depth": 5,
+      "min_child_weight": 1,
+      "objective": "reg:gamma",
+      "n_estimators": 22,
+      "validation_rmse": 7448.701712178708,
+      "validation_mae": 4520.847031704215
+    },
+    {
+      "learning_rate": 0.05,
+      "max_depth": 5,
+      "min_child_weight": 5,
+      "objective": "reg:gamma",
+      "n_estimators": 31,
+      "validation_rmse": 7435.632470216504,
+      "validation_mae": 4488.569328556504
+    }
+  ],
+  "train_counts": {
+    "train_buyers": 1328,
+    "validation_buyers": 430,
+    "zero_gross_buyers": 0
+  },
+  "skipped_objectives": [],
+  "target": "gross amount over [t0, t0 + 4 weeks) given at least one purchase",
+  "negative_prediction_policy": "clip_at_zero",
+  "xgboost_version": "3.4.1"
+}

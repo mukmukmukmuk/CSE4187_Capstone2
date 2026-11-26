@@ -1,13 +1,16 @@
 {
-  "bundle_schema_version": 2,
-  "created_at": "2026-11-26T07:32:34+00:00",
+  "bundle_schema_version": 3,
+  "created_at": "2026-11-26T09:37:18+00:00",
   "final_model": "xgboost_two_part",
   "model_versions": {
-    "baseline": "clv-0.3.0+baseline.1a1177b76695",
-    "bgnbd_gg": "clv-0.3.0+bgnbd_gg.6d924fc3771c",
-    "xgboost": "clv-0.3.0+xgboost.9734d1833bae",
-    "xgboost_two_part": "clv-0.3.0+xgboost_two_part.90a6f691e41e",
-    "xgboost_gross_4w": "clv-0.3.0+xgboost_gross_4w.b0b1faea709e"
+    "baseline": "clv-0.4.0+baseline.90b2f74cabf2",
+    "bgnbd_gg": "clv-0.4.0+bgnbd_gg.a9dc2bf40c22",
+    "xgboost": "clv-0.4.0+xgboost.197d5887f8eb",
+    "xgboost_two_part": "clv-0.4.0+xgboost_two_part.46de085150db",
+    "mean_gross_4w": "clv-0.4.0+mean_gross_4w.0f548ab0c002",
+    "gamma_gamma_gross_4w": "clv-0.4.0+gamma_gamma_gross_4w.08c1df4bbc86",
+    "xgboost_gross_4w": "clv-0.4.0+xgboost_gross_4w.3e844927be19",
+    "xgboost_gamma_gross_4w": "clv-0.4.0+xgboost_gamma_gross_4w.5890bee9bd04"
   },
   "model_status": {
     "baseline": "trained",
@@ -46,8 +49,8 @@
     "coupon_sent_13w"
   ],
   "code": {
-    "clv_version": "0.3.0",
-    "git_commit": "d1992c418bf403a87b90837b9dbb297cf10a695c",
+    "clv_version": "0.4.0",
+    "git_commit": "be9768047f51c446291d4e828697bfa497ad8ca8",
     "clv_dirty": false
   },
   "environment": {
@@ -126,9 +129,9 @@
     }
   },
   "gross_4w": {
-    "model": "xgboost_gross_4w",
+    "model": "mean_gross_4w",
     "status": "trained",
-    "model_version": "clv-0.3.0+xgboost_gross_4w.b0b1faea709e",
+    "model_version": "clv-0.4.0+mean_gross_4w.0f548ab0c002",
     "target": {
       "definition_id": "gross_amount_4w_if_purchase_v1",
       "column": "predicted_gross_4w_if_purchase",
@@ -148,14 +151,27 @@
     },
     "test_metrics": {
       "n": 463,
-      "mae": 6013.7947162273895,
-      "rmse": 12855.919089492947,
+      "mae": 6137.9927853964455,
+      "rmse": 12810.770474577721,
       "mean_actual": 7709.866090712743,
-      "mean_predicted": 6558.668621549338
-    }
+      "mean_predicted": 6924.587349397592
+    },
+    "candidates": {
+      "mean_gross_4w": "clv-0.4.0+mean_gross_4w.0f548ab0c002",
+      "gamma_gamma_gross_4w": "clv-0.4.0+gamma_gamma_gross_4w.08c1df4bbc86",
+      "xgboost_gross_4w": "clv-0.4.0+xgboost_gross_4w.3e844927be19",
+      "xgboost_gamma_gross_4w": "clv-0.4.0+xgboost_gamma_gross_4w.5890bee9bd04"
+    },
+    "candidate_status": {
+      "mean_gross_4w": "trained",
+      "gamma_gamma_gross_4w": "trained",
+      "xgboost_gross_4w": "trained",
+      "xgboost_gamma_gross_4w": "trained"
+    },
+    "selection_rule": "one-standard-error rule on repeated K-fold out-of-fold squared error over train + validation buyers: the simplest candidate whose mean squared error is within one paired standard error of the best candidate"
   },
   "files_sha256": {
-    "registry.json": "025e32383c1cec78001b0ffffdc61d4d310dae2c0909c35a170c09ac4784c751",
+    "registry.json": "3f6f8e5ec9a816962d615ca750c5cedf69abb4f6894e1c5c45d1e06616d6779f",
     "splits.csv": "709c14c50cc9e43f97fac3d4eae5c2fe19b86af7b533b6891de2cdb6375ee58f",
     "models/baseline.json": "9f074f952900208f0db96f9068dd91c6971acdc3daf8dae2883f9c1a7141635c",
     "models/bgnbd_gg.json": "7250cbc561c94141bf3dd22b09b7a880a45d9840628624067af06621d223a10b",
@@ -164,7 +180,11 @@
     "models/xgboost_two_part/classifier.json": "65cc878d035a028436d7bac0cbe844d5818f2e4d7dbc45201e234b0e3bca5615",
     "models/xgboost_two_part/regressor.json": "34d99b769250be594047d203d04c1f7d964a69e55ff068cf36513c6a620ae672",
     "models/xgboost_two_part/two_part_meta.json": "f9f567bbd3774654a6166548b57678949f5bc2460e61891f37051083c0a60e37",
-    "models/xgboost_gross_4w/regressor.json": "9757a9a59e971b6f5cd46be3f2c56b7804d8e7f5db6e17cf2ee68610756f84ef",
-    "models/xgboost_gross_4w/gross_4w_meta.json": "8a2711ab404d4d5656c4e556ae8107b0f877115926c8cbc00cc6c0c7a39a5c74"
+    "models/mean_gross_4w.json": "eed9059fd5d51cb9808fefbf257bc993ffa5dd911d4dc20be503a82a948499f0",
+    "models/gamma_gamma_gross_4w.json": "a07636fb6b12893a14843e167ac3e14591dafb7c8120de0eb0327788aa2279e2",
+    "models/xgboost_gross_4w/regressor.json": "7e89ed646aa4d119c5b40adbaecc07ba1ffab2068d4ef7b543831788bbf2d433",
+    "models/xgboost_gross_4w/gross_4w_meta.json": "c5ffed371fa1509cab905e4f4b97c667793f740474c0aaba577d70fe498ca4f5",
+    "models/xgboost_gamma_gross_4w/regressor.json": "9757a9a59e971b6f5cd46be3f2c56b7804d8e7f5db6e17cf2ee68610756f84ef",
+    "models/xgboost_gamma_gross_4w/gross_4w_meta.json": "d2adaa4da9860ba4025f1c2da1c79245b7f69847c05679053c3f4a4e3b75c62b"
   }
 }

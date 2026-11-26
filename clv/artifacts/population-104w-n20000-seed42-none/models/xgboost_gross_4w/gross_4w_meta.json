@@ -40,10 +40,6 @@
   },
   "seed": 42,
   "grid": {
-    "objective": [
-      "reg:squarederror",
-      "reg:gamma"
-    ],
     "max_depth": [
       3,
       5
@@ -54,6 +50,9 @@
     ],
     "learning_rate": [
       0.05
+    ],
+    "objective": [
+      "reg:squarederror"
     ]
   },
   "fixed": {
@@ -66,16 +65,16 @@
     "n_jobs": 1
   },
   "best_params": {
-    "n_estimators": 41,
+    "n_estimators": 4,
     "subsample": 0.8,
     "colsample_bytree": 0.8,
     "reg_lambda": 1.0,
     "tree_method": "hist",
     "n_jobs": 1,
     "learning_rate": 0.05,
-    "max_depth": 3,
+    "max_depth": 5,
     "min_child_weight": 5,
-    "objective": "reg:gamma"
+    "objective": "reg:squarederror"
   },
   "grid_results": [
     {
@@ -90,29 +89,11 @@
     {
       "learning_rate": 0.05,
       "max_depth": 3,
-      "min_child_weight": 1,
-      "objective": "reg:gamma",
-      "n_estimators": 41,
-      "validation_rmse": 7438.201368858541,
-      "validation_mae": 4538.599819449491
-    },
-    {
-      "learning_rate": 0.05,
-      "max_depth": 3,
       "min_child_weight": 5,
       "objective": "reg:squarederror",
       "n_estimators": 15,
       "validation_rmse": 7476.060136483352,
       "validation_mae": 4645.3981161428055
-    },
-    {
-      "learning_rate": 0.05,
-      "max_depth": 3,
-      "min_child_weight": 5,
-      "objective": "reg:gamma",
-      "n_estimators": 41,
-      "validation_rmse": 7432.846438571356,
-      "validation_mae": 4533.671140307049
     },
     {
       "learning_rate": 0.05,
@@ -126,29 +107,11 @@
     {
       "learning_rate": 0.05,
       "max_depth": 5,
-      "min_child_weight": 1,
-      "objective": "reg:gamma",
-      "n_estimators": 22,
-      "validation_rmse": 7448.701712178708,
-      "validation_mae": 4520.847031704215
-    },
-    {
-      "learning_rate": 0.05,
-      "max_depth": 5,
       "min_child_weight": 5,
       "objective": "reg:squarederror",
       "n_estimators": 4,
       "validation_rmse": 7470.576442749676,
       "validation_mae": 4668.426787336482
-    },
-    {
-      "learning_rate": 0.05,
-      "max_depth": 5,
-      "min_child_weight": 5,
-      "objective": "reg:gamma",
-      "n_estimators": 31,
-      "validation_rmse": 7435.632470216504,
-      "validation_mae": 4488.569328556504
     }
   ],
   "train_counts": {
