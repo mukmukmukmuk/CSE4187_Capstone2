@@ -1,0 +1,752 @@
+{
+  "clv_version": "0.3.0",
+  "created_at": "2026-11-26T07:32:34+00:00",
+  "reference_week": "2024-12-30T00:00:00+09:00",
+  "horizon_weeks": 52,
+  "input_weeks": 13,
+  "contract": {
+    "feature_window": "[t0 - 13 weeks, t0)",
+    "label_window": "[t0, t0 + 52 weeks)",
+    "label_definition": "sum of gross_revenue - redemption_discount_cost (paid amount); coupon send cost not deducted",
+    "reference_week": "prediction cutoff t0, Asia/Seoul Monday 00:00; not the simulator weekly row start",
+    "high_value_column": "is_high_value_customer is the CLV-internal name; the shared name needs team agreement",
+    "amounts": "source minor units with the recorded currency and amount_unit; no conversion",
+    "gross_4w_window": "[t0, t0 + 4 weeks), same customer_id and t0 as the 52-week label",
+    "gross_4w_definition": "sum of gross_revenue (before discount, repeat orders included) of customers with at least one purchase in the window; discount and coupon send cost not deducted; non-buyers have no amount label",
+    "population": "the population policy is applied before the customer split and shared by every model; inference scores treatment and control customers alike"
+  },
+  "config": {
+    "seed": 42,
+    "population_policy": "control_no_coupon",
+    "split_fractions": [
+      0.6,
+      0.2,
+      0.2
+    ],
+    "top_fraction": 0.2,
+    "require_complete_history": false,
+    "calibration": "feature_window",
+    "transaction_period": "D",
+    "no_purchase_fallback": "zero",
+    "bgnbd_penalizer": 0.0,
+    "gg_penalizer": 0.0,
+    "bgnbd_sensitivity_penalizers": [
+      0.0,
+      0.001,
+      0.01,
+      0.1
+    ],
+    "selection_metric": "rmse",
+    "final_model": "auto",
+    "xgb_grid": {
+      "objective": [
+        "reg:squarederror",
+        "reg:tweedie"
+      ],
+      "max_depth": [
+        3,
+        5
+      ],
+      "min_child_weight": [
+        1,
+        5
+      ],
+      "learning_rate": [
+        0.05
+      ]
+    },
+    "xgb_fixed": {
+      "n_estimators": 1000,
+      "early_stopping_rounds": 50,
+      "subsample": 0.8,
+      "colsample_bytree": 0.8,
+      "reg_lambda": 1.0,
+      "tree_method": "hist",
+      "n_jobs": 1
+    },
+    "two_part_classifier_grid": {
+      "max_depth": [
+        3,
+        5
+      ],
+      "min_child_weight": [
+        1,
+        5
+      ],
+      "learning_rate": [
+        0.05
+      ]
+    },
+    "two_part_regressor_grid": {
+      "objective": [
+        "reg:squarederror",
+        "reg:gamma"
+      ],
+      "max_depth": [
+        3,
+        5
+      ],
+      "min_child_weight": [
+        1,
+        5
+      ],
+      "learning_rate": [
+        0.05
+      ]
+    },
+    "gross_4w_grid": {
+      "objective": [
+        "reg:squarederror",
+        "reg:gamma"
+      ],
+      "max_depth": [
+        3,
+        5
+      ],
+      "min_child_weight": [
+        1,
+        5
+      ],
+      "learning_rate": [
+        0.05
+      ]
+    }
+  },
+  "predictors": [
+    "purchase_count_4w",
+    "purchase_count_13w",
+    "session_count_4w",
+    "session_count_13w",
+    "net_spend_4w",
+    "net_spend_13w",
+    "weeks_since_last_purchase",
+    "purchase_active_weeks_13w",
+    "zero_purchase_streak",
+    "purchase_trend",
+    "spend_trend",
+    "purchase_per_session_13w",
+    "weeks_since_last_session",
+    "session_active_weeks_13w",
+    "session_trend",
+    "avg_paid_per_purchase_13w",
+    "coupon_sent_13w"
+  ],
+  "provenance": {
+    "dataset_id": "cosmetics-source-v10-six-event-checkout-tianchi-joint-timing-population-gmm-return-full-104w-seed42-n20000-c1d9799b77664f07-28d",
+    "currency": "SOURCE_UNSPECIFIED",
+    "amount_unit": "0.01",
+    "path": "/root/CSE4187_Capstone2/results/simulator/main-d1992c4/population-104w-n20000-seed42-none/features/weekly_panel.parquet",
+    "source_format": "simulator_v5_weekly_panel",
+    "coverage_source": "supplied",
+    "weekly_sha256": "14ce371e4aace23fd4fca389c8389f14ac217e0bdff9ca4a9bb5c99285e21c27",
+    "raw_database_sha256": "76f255cac9bda22df85e31d5f76247b962421d756f14e746faeed80c8057e264",
+    "seed": 42
+  },
+  "ledger": {
+    "path": "/root/CSE4187_Capstone2/results/simulator/main-d1992c4/population-104w-n20000-seed42-none/dataset/raw.sqlite",
+    "raw_database_sha256": "76f255cac9bda22df85e31d5f76247b962421d756f14e746faeed80c8057e264",
+    "observation_start_at": "2023-12-31T15:00:00+00:00",
+    "observation_end_at": "2025-12-28T15:00:00+00:00",
+    "source_metadata": {
+      "dataset_id": "cosmetics-source-v10-six-event-checkout-tianchi-joint-timing-population-gmm-return-full-104w-seed42-n20000-c1d9799b77664f07-28d",
+      "seed": 42,
+      "months": null,
+      "eligible_customers": 20000,
+      "simulator_version": "source-shopping-v10",
+      "configuration_sha256": "b52890886daae302cf253b76071398e2dea24b8b8adbcf50833d110a4d8c34be",
+      "simulator_code_sha256": "7cf9dd566cd0a6b04ba3bd4259240957ecfd6fcf0f1d54e787d4088bedb9792c",
+      "as_of_at": "2024-12-29T15:00:00+00:00",
+      "observation_start_at": "2023-12-31T15:00:00+00:00",
+      "observation_end_at": "2025-12-28T15:00:00+00:00",
+      "retention_mode": "source",
+      "distribution": "source_conditioned_without_retention_intercept_shift",
+      "min_customer_history_days": 91,
+      "eligibility_window_days": 28,
+      "coupon_validity_days": 28
+    }
+  },
+  "dataset": {
+    "gross_4w_window_complete": 20000,
+    "gross_4w_buyers": 2221,
+    "reference_week": "2024-12-30T00:00:00+09:00",
+    "customers_with_history": 20000,
+    "feature_window_complete": 20000,
+    "label_window_complete": 20000,
+    "excluded_incomplete_label": 0,
+    "excluded_incomplete_history": 0,
+    "labelled_customers": 20000,
+    "zero_label_share": 0.68235,
+    "treatment_in_label_window": 0
+  },
+  "split_counts": {
+    "train": 12000,
+    "validation": 4000,
+    "test": 4000
+  },
+  "split_counts_all_labelled": {
+    "train": 12000,
+    "validation": 4000,
+    "test": 4000
+  },
+  "population_policy": "control_no_coupon",
+  "population": {
+    "policy": "control_no_coupon",
+    "definition": "control customers (treatment == 0) with no coupon sent in the observed weeks of [t0, t0 + 52 weeks); treatment and unassigned customers are unused for training, selection and evaluation",
+    "customers": 20000,
+    "eligible": 20000,
+    "unused": 0,
+    "control": 20000,
+    "treatment": 0,
+    "unassigned": 0,
+    "control_with_coupon_excluded": 0
+  },
+  "training_population": "control_no_coupon customers",
+  "model_status": {
+    "baseline": "trained",
+    "bgnbd_gg": "trained",
+    "xgboost": "trained",
+    "xgboost_two_part": "trained"
+  },
+  "model_details": {
+    "bgnbd_gg": {
+      "cutoff": "2024-12-30T00:00:00+09:00",
+      "calibration": "feature_window",
+      "transaction_period": "D",
+      "fit_customers": 12000,
+      "customers_with_purchase": 3681,
+      "customers_without_purchase": 8319,
+      "repeat_customers": 1548,
+      "bgnbd": {
+        "params": {
+          "r": 0.4215010404541723,
+          "alpha": 1.926818822200975,
+          "a": 4.305485670867324,
+          "b": 13.357729501048928
+        },
+        "converged": true,
+        "method": "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL",
+        "objective": 2.4439796056873493,
+        "iterations": 17
+      },
+      "gamma_gamma": {
+        "params": {
+          "p": 2.1259427227346803,
+          "q": 6.231305385204364,
+          "v": 11649.153989688188
+        },
+        "converged": true,
+        "method": "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL",
+        "objective": 0.8211328994942219,
+        "iterations": 12,
+        "amount_scale": 4667.483545309646,
+        "population_mean_value": 4734.083049411919
+      },
+      "frequency_monetary_correlation": 0.04938074392499581,
+      "mean_dropout_probability": 0.24375435779737656,
+      "dropout_concentration": 17.663215171916253,
+      "checks": {
+        "bgnbd_converged": true,
+        "gamma_gamma_converged": true,
+        "finite_positive_params": true,
+        "a_gt_1": true,
+        "q_gt_1": true,
+        "dropout_heterogeneity_identified": true,
+        "independence_ok": true,
+        "repeat_sample_ok": true,
+        "correlation_limit": 0.3,
+        "dropout_concentration_limit": 1000.0,
+        "small_repeat_sample": 30
+      },
+      "rejections": [],
+      "warnings": [],
+      "no_purchase_fallback": "zero",
+      "fallback_value": 0.0,
+      "status_counts": {
+        "no_purchase_in_calibration": 13801,
+        "modeled": 6199
+      },
+      "numerical_failure_share": 0.0,
+      "penalizer_sensitivity": [
+        {
+          "bgnbd_penalizer": 0.0,
+          "configured": true,
+          "r": 0.4215010404541723,
+          "alpha": 1.926818822200975,
+          "a": 4.305485670867324,
+          "b": 13.357729501048928,
+          "mean_dropout_probability": 0.24375435779737656,
+          "dropout_concentration": 17.663215171916253,
+          "converged": true,
+          "rejected": null,
+          "validation_mae": 5087.88325449297,
+          "validation_rmse": 12503.075465004846,
+          "validation_mean_predicted": 2698.2296750183245,
+          "spearman_vs_configured": 0.9999999999999999
+        },
+        {
+          "bgnbd_penalizer": 0.001,
+          "configured": false,
+          "r": 0.4214090436697802,
+          "alpha": 1.897907320728139,
+          "a": 1.451094944369806,
+          "b": 3.7526568482222245,
+          "mean_dropout_probability": 0.278855526206219,
+          "dropout_concentration": 5.203751792592031,
+          "converged": true,
+          "rejected": null,
+          "validation_mae": 5383.233058276133,
+          "validation_rmse": 13049.50249394835,
+          "validation_mean_predicted": 3120.577927405586,
+          "spearman_vs_configured": 0.9990646231159857
+        },
+        {
+          "bgnbd_penalizer": 0.01,
+          "configured": false,
+          "r": 0.42729140416972927,
+          "alpha": 1.8149853554062916,
+          "a": 0.8426534671851282,
+          "b": 1.7173640487529862,
+          "mean_dropout_probability": 0.32915925845778404,
+          "dropout_concentration": 2.5600175159381147,
+          "converged": true,
+          "rejected": null,
+          "validation_mae": 5690.191536715805,
+          "validation_rmse": 14069.655860059549,
+          "validation_mean_predicted": 3505.4595308171556,
+          "spearman_vs_configured": 0.9976193806481242
+        },
+        {
+          "bgnbd_penalizer": 0.1,
+          "configured": false,
+          "r": 0.4992302136027435,
+          "alpha": 1.5409719665551325,
+          "a": 0.8777213574138499,
+          "b": 1.1700192655531663,
+          "mean_dropout_probability": 0.42862916698019116,
+          "dropout_concentration": 2.0477406229670163,
+          "converged": true,
+          "rejected": null,
+          "validation_mae": 5480.178375811817,
+          "validation_rmse": 13788.77810706545,
+          "validation_mean_predicted": 3154.7840883423682,
+          "spearman_vs_configured": 0.9961094988612934
+        }
+      ]
+    },
+    "xgboost": {
+      "version": "3.4.1",
+      "best_params": {
+        "n_estimators": 93,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "reg_lambda": 1.0,
+        "tree_method": "hist",
+        "n_jobs": 1,
+        "learning_rate": 0.05,
+        "max_depth": 3,
+        "min_child_weight": 1,
+        "objective": "reg:squarederror"
+      },
+      "grid_results": [
+        {
+          "learning_rate": 0.05,
+          "max_depth": 3,
+          "min_child_weight": 1,
+          "objective": "reg:squarederror",
+          "n_estimators": 93,
+          "validation_rmse": 11968.6825174845,
+          "validation_mae": 5794.953362701416
+        },
+        {
+          "learning_rate": 0.05,
+          "max_depth": 3,
+          "min_child_weight": 1,
+          "objective": "reg:tweedie",
+          "n_estimators": 76,
+          "validation_rmse": 11971.419879641839,
+          "validation_mae": 5719.255868011474
+        },
+        {
+          "learning_rate": 0.05,
+          "max_depth": 3,
+          "min_child_weight": 5,
+          "objective": "reg:squarederror",
+          "n_estimators": 60,
+          "validation_rmse": 11991.653596859138,
+          "validation_mae": 5817.508723693848
+        },
+        {
+          "learning_rate": 0.05,
+          "max_depth": 3,
+          "min_child_weight": 5,
+          "objective": "reg:tweedie",
+          "n_estimators": 76,
+          "validation_rmse": 11971.419879641839,
+          "validation_mae": 5719.255868011474
+        },
+        {
+          "learning_rate": 0.05,
+          "max_depth": 5,
+          "min_child_weight": 1,
+          "objective": "reg:squarederror",
+          "n_estimators": 68,
+          "validation_rmse": 12027.716600928,
+          "validation_mae": 5821.018826873779
+        },
+        {
+          "learning_rate": 0.05,
+          "max_depth": 5,
+          "min_child_weight": 1,
+          "objective": "reg:tweedie",
+          "n_estimators": 71,
+          "validation_rmse": 12008.153676753964,
+          "validation_mae": 5636.376863586426
+        },
+        {
+          "learning_rate": 0.05,
+          "max_depth": 5,
+          "min_child_weight": 5,
+          "objective": "reg:squarederror",
+          "n_estimators": 47,
+          "validation_rmse": 12018.850313011408,
+          "validation_mae": 5827.224379058838
+        },
+        {
+          "learning_rate": 0.05,
+          "max_depth": 5,
+          "min_child_weight": 5,
+          "objective": "reg:tweedie",
+          "n_estimators": 71,
+          "validation_rmse": 12008.153676753964,
+          "validation_mae": 5636.376863586426
+        }
+      ],
+      "clipped_negative_predictions": 0
+    },
+    "xgboost_two_part": {
+      "version": "3.4.1",
+      "best_params": {
+        "classifier": {
+          "n_estimators": 96,
+          "subsample": 0.8,
+          "colsample_bytree": 0.8,
+          "reg_lambda": 1.0,
+          "tree_method": "hist",
+          "n_jobs": 1,
+          "learning_rate": 0.05,
+          "max_depth": 3,
+          "min_child_weight": 1
+        },
+        "regressor": {
+          "n_estimators": 41,
+          "subsample": 0.8,
+          "colsample_bytree": 0.8,
+          "reg_lambda": 1.0,
+          "tree_method": "hist",
+          "n_jobs": 1,
+          "learning_rate": 0.05,
+          "max_depth": 3,
+          "min_child_weight": 5,
+          "objective": "reg:squarederror"
+        }
+      },
+      "grid_results": {
+        "classifier": [
+          {
+            "learning_rate": 0.05,
+            "max_depth": 3,
+            "min_child_weight": 1,
+            "n_estimators": 96,
+            "validation_n": 4000,
+            "validation_buyer_share": 0.3185,
+            "validation_auc": 0.6870192091735955,
+            "validation_logloss": 0.5771874348229223,
+            "validation_brier": 0.19597815841553173
+          },
+          {
+            "learning_rate": 0.05,
+            "max_depth": 3,
+            "min_child_weight": 5,
+            "n_estimators": 100,
+            "validation_n": 4000,
+            "validation_buyer_share": 0.3185,
+            "validation_auc": 0.6864343993706744,
+            "validation_logloss": 0.5776264128381651,
+            "validation_brier": 0.19617651831063138
+          },
+          {
+            "learning_rate": 0.05,
+            "max_depth": 5,
+            "min_child_weight": 1,
+            "n_estimators": 40,
+            "validation_n": 4000,
+            "validation_buyer_share": 0.3185,
+            "validation_auc": 0.6847888119636364,
+            "validation_logloss": 0.5795399786977172,
+            "validation_brier": 0.19695425241026673
+          },
+          {
+            "learning_rate": 0.05,
+            "max_depth": 5,
+            "min_child_weight": 5,
+            "n_estimators": 45,
+            "validation_n": 4000,
+            "validation_buyer_share": 0.3185,
+            "validation_auc": 0.6848373301575272,
+            "validation_logloss": 0.5791639605647771,
+            "validation_brier": 0.19680740767737082
+          }
+        ],
+        "regressor": [
+          {
+            "learning_rate": 0.05,
+            "max_depth": 3,
+            "min_child_weight": 1,
+            "objective": "reg:squarederror",
+            "n_estimators": 41,
+            "validation_rmse": 18579.209830370648,
+            "validation_mae": 10989.075232872596
+          },
+          {
+            "learning_rate": 0.05,
+            "max_depth": 3,
+            "min_child_weight": 1,
+            "objective": "reg:gamma",
+            "n_estimators": 82,
+            "validation_rmse": 18591.382704558077,
+            "validation_mae": 10771.11954113827
+          },
+          {
+            "learning_rate": 0.05,
+            "max_depth": 3,
+            "min_child_weight": 5,
+            "objective": "reg:squarederror",
+            "n_estimators": 41,
+            "validation_rmse": 18576.80731783463,
+            "validation_mae": 10988.69835256819
+          },
+          {
+            "learning_rate": 0.05,
+            "max_depth": 3,
+            "min_child_weight": 5,
+            "objective": "reg:gamma",
+            "n_estimators": 53,
+            "validation_rmse": 18606.43352071927,
+            "validation_mae": 10837.19274001668
+          },
+          {
+            "learning_rate": 0.05,
+            "max_depth": 5,
+            "min_child_weight": 1,
+            "objective": "reg:squarederror",
+            "n_estimators": 30,
+            "validation_rmse": 18640.039879226624,
+            "validation_mae": 10988.099552651589
+          },
+          {
+            "learning_rate": 0.05,
+            "max_depth": 5,
+            "min_child_weight": 1,
+            "objective": "reg:gamma",
+            "n_estimators": 10,
+            "validation_rmse": 18698.863965845314,
+            "validation_mae": 10928.516643338526
+          },
+          {
+            "learning_rate": 0.05,
+            "max_depth": 5,
+            "min_child_weight": 5,
+            "objective": "reg:squarederror",
+            "n_estimators": 26,
+            "validation_rmse": 18596.975927012998,
+            "validation_mae": 10991.427318914344
+          },
+          {
+            "learning_rate": 0.05,
+            "max_depth": 5,
+            "min_child_weight": 5,
+            "objective": "reg:gamma",
+            "n_estimators": 14,
+            "validation_rmse": 18708.03296910763,
+            "validation_mae": 10904.254667416846
+          }
+        ]
+      },
+      "train_customers": 12000,
+      "train_buyers": 3772,
+      "validation_customers": 4000,
+      "validation_buyers": 1274,
+      "clipped_negative_amounts": 0
+    }
+  },
+  "trained_models": [
+    "baseline",
+    "bgnbd_gg",
+    "xgboost",
+    "xgboost_two_part"
+  ],
+  "final_model": "xgboost_two_part",
+  "selection": "lowest validation rmse",
+  "test_metrics": {
+    "baseline": {
+      "mae": 12406.5215,
+      "rmse": 30925.38020254561,
+      "top20_overlap_rate": 0.33875
+    },
+    "bgnbd_gg": {
+      "mae": 5332.928982137464,
+      "rmse": 13159.015741861123,
+      "top20_overlap_rate": 0.32125
+    },
+    "xgboost": {
+      "mae": 6006.0854309387205,
+      "rmse": 12693.985646236131,
+      "top20_overlap_rate": 0.35625
+    },
+    "xgboost_two_part": {
+      "mae": 5992.423587396038,
+      "rmse": 12646.157980240196,
+      "top20_overlap_rate": 0.36375
+    }
+  },
+  "test_metrics_by_history": {
+    "complete": {
+      "baseline": {
+        "n": 4000,
+        "mae": 12406.5215,
+        "rmse": 30925.38020254561
+      },
+      "bgnbd_gg": {
+        "n": 4000,
+        "mae": 5332.928982137464,
+        "rmse": 13159.015741861123
+      },
+      "xgboost": {
+        "n": 4000,
+        "mae": 6006.0854309387205,
+        "rmse": 12693.985646236131
+      },
+      "xgboost_two_part": {
+        "n": 4000,
+        "mae": 5992.423587396038,
+        "rmse": 12646.157980240196
+      }
+    }
+  },
+  "gross_4w": {
+    "model": "xgboost_gross_4w",
+    "status": "trained",
+    "target_definition_id": "gross_amount_4w_if_purchase_v1",
+    "training_population": "control_no_coupon customers with a complete 4-week window and at least one purchase in it",
+    "split_counts": {
+      "train": 1328,
+      "validation": 430,
+      "test": 463
+    },
+    "details": {
+      "version": "3.4.1",
+      "best_params": {
+        "n_estimators": 41,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "reg_lambda": 1.0,
+        "tree_method": "hist",
+        "n_jobs": 1,
+        "learning_rate": 0.05,
+        "max_depth": 3,
+        "min_child_weight": 5,
+        "objective": "reg:gamma"
+      },
+      "grid_results": [
+        {
+          "learning_rate": 0.05,
+          "max_depth": 3,
+          "min_child_weight": 1,
+          "objective": "reg:squarederror",
+          "n_estimators": 15,
+          "validation_rmse": 7478.244478262253,
+          "validation_mae": 4648.314646166425
+        },
+        {
+          "learning_rate": 0.05,
+          "max_depth": 3,
+          "min_child_weight": 1,
+          "objective": "reg:gamma",
+          "n_estimators": 41,
+          "validation_rmse": 7438.201368858541,
+          "validation_mae": 4538.599819449491
+        },
+        {
+          "learning_rate": 0.05,
+          "max_depth": 3,
+          "min_child_weight": 5,
+          "objective": "reg:squarederror",
+          "n_estimators": 15,
+          "validation_rmse": 7476.060136483352,
+          "validation_mae": 4645.3981161428055
+        },
+        {
+          "learning_rate": 0.05,
+          "max_depth": 3,
+          "min_child_weight": 5,
+          "objective": "reg:gamma",
+          "n_estimators": 41,
+          "validation_rmse": 7432.846438571356,
+          "validation_mae": 4533.671140307049
+        },
+        {
+          "learning_rate": 0.05,
+          "max_depth": 5,
+          "min_child_weight": 1,
+          "objective": "reg:squarederror",
+          "n_estimators": 3,
+          "validation_rmse": 7475.859109563953,
+          "validation_mae": 4665.966660610465
+        },
+        {
+          "learning_rate": 0.05,
+          "max_depth": 5,
+          "min_child_weight": 1,
+          "objective": "reg:gamma",
+          "n_estimators": 22,
+          "validation_rmse": 7448.701712178708,
+          "validation_mae": 4520.847031704215
+        },
+        {
+          "learning_rate": 0.05,
+          "max_depth": 5,
+          "min_child_weight": 5,
+          "objective": "reg:squarederror",
+          "n_estimators": 4,
+          "validation_rmse": 7470.576442749676,
+          "validation_mae": 4668.426787336482
+        },
+        {
+          "learning_rate": 0.05,
+          "max_depth": 5,
+          "min_child_weight": 5,
+          "objective": "reg:gamma",
+          "n_estimators": 31,
+          "validation_rmse": 7435.632470216504,
+          "validation_mae": 4488.569328556504
+        }
+      ],
+      "skipped_objectives": [],
+      "train_buyers": 1328,
+      "validation_buyers": 430,
+      "zero_gross_buyers": 0,
+      "clipped_negative_predictions": 0
+    },
+    "test_metrics": {
+      "n": 463,
+      "mae": 6013.7947162273895,
+      "rmse": 12855.919089492947,
+      "mean_actual": 7709.866090712743,
+      "mean_predicted": 6558.668621549338
+    }
+  },
+  "warnings": [
+    "currency is SOURCE_UNSPECIFIED: amounts are source minor units (amount_unit=0.01), not KRW",
+    "currency is SOURCE_UNSPECIFIED: amounts are source minor units (amount_unit=0.01), not KRW"
+  ]
+}

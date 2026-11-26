@@ -1,0 +1,237 @@
+{
+  "model": "xgboost_two_part",
+  "feature_names": [
+    "purchase_count_4w",
+    "purchase_count_13w",
+    "session_count_4w",
+    "session_count_13w",
+    "net_spend_4w",
+    "net_spend_13w",
+    "weeks_since_last_purchase",
+    "purchase_active_weeks_13w",
+    "zero_purchase_streak",
+    "purchase_trend",
+    "spend_trend",
+    "purchase_per_session_13w",
+    "weeks_since_last_session",
+    "session_active_weeks_13w",
+    "session_trend",
+    "avg_paid_per_purchase_13w",
+    "coupon_sent_13w"
+  ],
+  "feature_dtypes": {
+    "purchase_count_4w": "float64",
+    "purchase_count_13w": "float64",
+    "session_count_4w": "float64",
+    "session_count_13w": "float64",
+    "net_spend_4w": "float64",
+    "net_spend_13w": "float64",
+    "weeks_since_last_purchase": "float64",
+    "purchase_active_weeks_13w": "float64",
+    "zero_purchase_streak": "float64",
+    "purchase_trend": "float64",
+    "spend_trend": "float64",
+    "purchase_per_session_13w": "float64",
+    "weeks_since_last_session": "float64",
+    "session_active_weeks_13w": "float64",
+    "session_trend": "float64",
+    "avg_paid_per_purchase_13w": "float64",
+    "coupon_sent_13w": "float64"
+  },
+  "seed": 42,
+  "classifier_grid": {
+    "max_depth": [
+      3,
+      5
+    ],
+    "min_child_weight": [
+      1,
+      5
+    ],
+    "learning_rate": [
+      0.05
+    ]
+  },
+  "regressor_grid": {
+    "objective": [
+      "reg:squarederror",
+      "reg:gamma"
+    ],
+    "max_depth": [
+      3,
+      5
+    ],
+    "min_child_weight": [
+      1,
+      5
+    ],
+    "learning_rate": [
+      0.05
+    ]
+  },
+  "fixed": {
+    "n_estimators": 1000,
+    "early_stopping_rounds": 50,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "reg_lambda": 1.0,
+    "tree_method": "hist",
+    "n_jobs": 1
+  },
+  "best_params": {
+    "classifier": {
+      "n_estimators": 96,
+      "subsample": 0.8,
+      "colsample_bytree": 0.8,
+      "reg_lambda": 1.0,
+      "tree_method": "hist",
+      "n_jobs": 1,
+      "learning_rate": 0.05,
+      "max_depth": 3,
+      "min_child_weight": 1
+    },
+    "regressor": {
+      "n_estimators": 41,
+      "subsample": 0.8,
+      "colsample_bytree": 0.8,
+      "reg_lambda": 1.0,
+      "tree_method": "hist",
+      "n_jobs": 1,
+      "learning_rate": 0.05,
+      "max_depth": 3,
+      "min_child_weight": 5,
+      "objective": "reg:squarederror"
+    }
+  },
+  "grid_results": {
+    "classifier": [
+      {
+        "learning_rate": 0.05,
+        "max_depth": 3,
+        "min_child_weight": 1,
+        "n_estimators": 96,
+        "validation_n": 4000,
+        "validation_buyer_share": 0.3185,
+        "validation_auc": 0.6870192091735955,
+        "validation_logloss": 0.5771874348229223,
+        "validation_brier": 0.19597815841553173
+      },
+      {
+        "learning_rate": 0.05,
+        "max_depth": 3,
+        "min_child_weight": 5,
+        "n_estimators": 100,
+        "validation_n": 4000,
+        "validation_buyer_share": 0.3185,
+        "validation_auc": 0.6864343993706744,
+        "validation_logloss": 0.5776264128381651,
+        "validation_brier": 0.19617651831063138
+      },
+      {
+        "learning_rate": 0.05,
+        "max_depth": 5,
+        "min_child_weight": 1,
+        "n_estimators": 40,
+        "validation_n": 4000,
+        "validation_buyer_share": 0.3185,
+        "validation_auc": 0.6847888119636364,
+        "validation_logloss": 0.5795399786977172,
+        "validation_brier": 0.19695425241026673
+      },
+      {
+        "learning_rate": 0.05,
+        "max_depth": 5,
+        "min_child_weight": 5,
+        "n_estimators": 45,
+        "validation_n": 4000,
+        "validation_buyer_share": 0.3185,
+        "validation_auc": 0.6848373301575272,
+        "validation_logloss": 0.5791639605647771,
+        "validation_brier": 0.19680740767737082
+      }
+    ],
+    "regressor": [
+      {
+        "learning_rate": 0.05,
+        "max_depth": 3,
+        "min_child_weight": 1,
+        "objective": "reg:squarederror",
+        "n_estimators": 41,
+        "validation_rmse": 18579.209830370648,
+        "validation_mae": 10989.075232872596
+      },
+      {
+        "learning_rate": 0.05,
+        "max_depth": 3,
+        "min_child_weight": 1,
+        "objective": "reg:gamma",
+        "n_estimators": 82,
+        "validation_rmse": 18591.382704558077,
+        "validation_mae": 10771.11954113827
+      },
+      {
+        "learning_rate": 0.05,
+        "max_depth": 3,
+        "min_child_weight": 5,
+        "objective": "reg:squarederror",
+        "n_estimators": 41,
+        "validation_rmse": 18576.80731783463,
+        "validation_mae": 10988.69835256819
+      },
+      {
+        "learning_rate": 0.05,
+        "max_depth": 3,
+        "min_child_weight": 5,
+        "objective": "reg:gamma",
+        "n_estimators": 53,
+        "validation_rmse": 18606.43352071927,
+        "validation_mae": 10837.19274001668
+      },
+      {
+        "learning_rate": 0.05,
+        "max_depth": 5,
+        "min_child_weight": 1,
+        "objective": "reg:squarederror",
+        "n_estimators": 30,
+        "validation_rmse": 18640.039879226624,
+        "validation_mae": 10988.099552651589
+      },
+      {
+        "learning_rate": 0.05,
+        "max_depth": 5,
+        "min_child_weight": 1,
+        "objective": "reg:gamma",
+        "n_estimators": 10,
+        "validation_rmse": 18698.863965845314,
+        "validation_mae": 10928.516643338526
+      },
+      {
+        "learning_rate": 0.05,
+        "max_depth": 5,
+        "min_child_weight": 5,
+        "objective": "reg:squarederror",
+        "n_estimators": 26,
+        "validation_rmse": 18596.975927012998,
+        "validation_mae": 10991.427318914344
+      },
+      {
+        "learning_rate": 0.05,
+        "max_depth": 5,
+        "min_child_weight": 5,
+        "objective": "reg:gamma",
+        "n_estimators": 14,
+        "validation_rmse": 18708.03296910763,
+        "validation_mae": 10904.254667416846
+      }
+    ]
+  },
+  "train_counts": {
+    "train_customers": 12000,
+    "train_buyers": 3772,
+    "validation_customers": 4000,
+    "validation_buyers": 1274
+  },
+  "combination": "purchase_probability_52w * expected_amount_if_purchase",
+  "negative_prediction_policy": "clip_amount_at_zero",
+  "xgboost_version": "3.4.1"
+}

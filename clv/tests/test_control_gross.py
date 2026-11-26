@@ -283,6 +283,31 @@ def test_existing_bundle_strategy_batch_has_no_four_week_batch(outputs, tmp_path
     assert load_strategy_predictions(path).gross_4w is None
 
 
+CANDIDATE_BUNDLE = HANDOFF_BUNDLE.parent / "population-104w-n20000-seed42-none"
+
+
+def test_candidate_no_coupon_bundle_gives_both_horizons(outputs):
+    """쿠폰 미발송 데이터로 최종 학습한 후보 번들: 체크섬 대조 후 52주와 4주 batch를 함께 낸다. 전달 번들은 그대로다."""
+    pytest.importorskip("xgboost")
+    weekly, _, _ = outputs
+    assert HANDOFF_BUNDLE.name == "population-24m-n20000-seed42"
+    model = load_model(CANDIDATE_BUNDLE)
+    assert model.name == "xgboost_two_part" and model.policy_condition == "control_no_coupon"
+    assert model.has_gross_4w and model.gross_4w_status == "trained"
+    ids = model.predict(weekly, reference_week="2024-10-07")["customer_id"].tolist()[:10]
+    as_of = pd.Timestamp("2024-10-06T15:00:00Z")
+    population = pd.DataFrame({
+        "customer_id": ids, "as_of_at": as_of, "snapshot_id": ids, "reference_week": "2024-10-07",
+        "dataset_id": "synthetic-fixture-seed0", "currency": "SOURCE_UNSPECIFIED", "amount_unit": "0.01",
+        "raw_database_sha256": "0" * 64})
+    result = model.predict_for_strategy(population, weekly, require_gross_4w=True, require_control_only=True)
+    assert list(result.frame.columns) == list(STRATEGY_COLUMNS)
+    assert list(result.gross_4w.columns) == list(GROSS_STRATEGY_COLUMNS) and result.gross_4w_status == "trained"
+    assert pd.to_datetime(result.gross_4w["prediction_end_at"], utc=True).eq(as_of + pd.Timedelta(weeks=4)).all()
+    assert result.gross_4w["predicted_gross_4w_if_purchase"].notna().all()
+    assert result.producer_metadata["policy_condition"] == "control_no_coupon"
+
+
 def test_existing_bundle_directory_is_not_overwritten(bundle, experiment):
     output, _ = bundle
     before = file_sha256(output / "model_card.json")

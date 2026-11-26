@@ -1,0 +1,170 @@
+{
+  "bundle_schema_version": 2,
+  "created_at": "2026-11-26T07:32:34+00:00",
+  "final_model": "xgboost_two_part",
+  "model_versions": {
+    "baseline": "clv-0.3.0+baseline.1a1177b76695",
+    "bgnbd_gg": "clv-0.3.0+bgnbd_gg.6d924fc3771c",
+    "xgboost": "clv-0.3.0+xgboost.9734d1833bae",
+    "xgboost_two_part": "clv-0.3.0+xgboost_two_part.90a6f691e41e",
+    "xgboost_gross_4w": "clv-0.3.0+xgboost_gross_4w.b0b1faea709e"
+  },
+  "model_status": {
+    "baseline": "trained",
+    "bgnbd_gg": "trained",
+    "xgboost": "trained",
+    "xgboost_two_part": "trained"
+  },
+  "target": {
+    "definition_id": "clv_paid_amount_52w_v1",
+    "column": "predicted_clv_12m",
+    "horizon_value": 52,
+    "horizon_unit": "weeks",
+    "window": "[t0, t0 + 52 weeks) = 364 days; not 12 calendar months",
+    "input_window": "[t0 - 13 weeks, t0)",
+    "definition": "sum of paid amount (gross_revenue - redemption_discount_cost) per customer; coupon send cost is not deducted",
+    "value_semantics": "nonnegative_amount",
+    "column_name_note": "predicted_clv_12m keeps its historical name; the horizon is 52 weeks"
+  },
+  "predictors": [
+    "purchase_count_4w",
+    "purchase_count_13w",
+    "session_count_4w",
+    "session_count_13w",
+    "net_spend_4w",
+    "net_spend_13w",
+    "weeks_since_last_purchase",
+    "purchase_active_weeks_13w",
+    "zero_purchase_streak",
+    "purchase_trend",
+    "spend_trend",
+    "purchase_per_session_13w",
+    "weeks_since_last_session",
+    "session_active_weeks_13w",
+    "session_trend",
+    "avg_paid_per_purchase_13w",
+    "coupon_sent_13w"
+  ],
+  "code": {
+    "clv_version": "0.3.0",
+    "git_commit": "d1992c418bf403a87b90837b9dbb297cf10a695c",
+    "clv_dirty": false
+  },
+  "environment": {
+    "python": "3.12.3",
+    "numpy": "2.5.5",
+    "pandas": "2.3.3",
+    "scipy": "1.18.1",
+    "xgboost": "3.4.1",
+    "pyarrow": "26.0.1"
+  },
+  "training_data": {
+    "reference_week": "2024-12-30T00:00:00+09:00",
+    "dataset_id": "cosmetics-source-v10-six-event-checkout-tianchi-joint-timing-population-gmm-return-full-104w-seed42-n20000-c1d9799b77664f07-28d",
+    "currency": "SOURCE_UNSPECIFIED",
+    "amount_unit": "0.01",
+    "raw_database_sha256": "76f255cac9bda22df85e31d5f76247b962421d756f14e746faeed80c8057e264",
+    "weekly_panel_sha256": "14ce371e4aace23fd4fca389c8389f14ac217e0bdff9ca4a9bb5c99285e21c27",
+    "simulator": {
+      "dataset_id": "cosmetics-source-v10-six-event-checkout-tianchi-joint-timing-population-gmm-return-full-104w-seed42-n20000-c1d9799b77664f07-28d",
+      "seed": 42,
+      "months": null,
+      "eligible_customers": 20000,
+      "simulator_version": "source-shopping-v10",
+      "configuration_sha256": "b52890886daae302cf253b76071398e2dea24b8b8adbcf50833d110a4d8c34be",
+      "simulator_code_sha256": "7cf9dd566cd0a6b04ba3bd4259240957ecfd6fcf0f1d54e787d4088bedb9792c",
+      "as_of_at": "2024-12-29T15:00:00+00:00",
+      "observation_start_at": "2023-12-31T15:00:00+00:00",
+      "observation_end_at": "2025-12-28T15:00:00+00:00",
+      "retention_mode": "source",
+      "distribution": "source_conditioned_without_retention_intercept_shift",
+      "min_customer_history_days": 91,
+      "eligibility_window_days": 28,
+      "coupon_validity_days": 28
+    },
+    "training_population": "control_no_coupon customers",
+    "split_counts": {
+      "train": 12000,
+      "validation": 4000,
+      "test": 4000
+    },
+    "labelled_customers": 20000,
+    "treatment_in_label_window": 0,
+    "population": {
+      "policy": "control_no_coupon",
+      "definition": "control customers (treatment == 0) with no coupon sent in the observed weeks of [t0, t0 + 52 weeks); treatment and unassigned customers are unused for training, selection and evaluation",
+      "customers": 20000,
+      "eligible": 20000,
+      "unused": 0,
+      "control": 20000,
+      "treatment": 0,
+      "unassigned": 0,
+      "control_with_coupon_excluded": 0
+    }
+  },
+  "policy_condition": "control_no_coupon",
+  "test_metrics": {
+    "baseline": {
+      "mae": 12406.5215,
+      "rmse": 30925.38020254561,
+      "top20_overlap_rate": 0.33875
+    },
+    "bgnbd_gg": {
+      "mae": 5332.928982137464,
+      "rmse": 13159.015741861123,
+      "top20_overlap_rate": 0.32125
+    },
+    "xgboost": {
+      "mae": 6006.0854309387205,
+      "rmse": 12693.985646236131,
+      "top20_overlap_rate": 0.35625
+    },
+    "xgboost_two_part": {
+      "mae": 5992.423587396038,
+      "rmse": 12646.157980240196,
+      "top20_overlap_rate": 0.36375
+    }
+  },
+  "gross_4w": {
+    "model": "xgboost_gross_4w",
+    "status": "trained",
+    "model_version": "clv-0.3.0+xgboost_gross_4w.b0b1faea709e",
+    "target": {
+      "definition_id": "gross_amount_4w_if_purchase_v1",
+      "column": "predicted_gross_4w_if_purchase",
+      "horizon_value": 4,
+      "horizon_unit": "weeks",
+      "window": "[t0, t0 + 4 weeks) = 28 days, same customer_id and t0 as predicted_clv_12m",
+      "input_window": "[t0 - 13 weeks, t0)",
+      "definition": "E[sum of gross amount before discount (gross_revenue, repeat orders included) | at least one purchase in the window, X(t0)]; discount and coupon send cost are not deducted",
+      "value_semantics": "nonnegative_amount",
+      "condition": "conditional on purchase; multiply by a purchase probability or uplift before comparing to amounts"
+    },
+    "policy_condition": "control_no_coupon",
+    "split_counts": {
+      "train": 1328,
+      "validation": 430,
+      "test": 463
+    },
+    "test_metrics": {
+      "n": 463,
+      "mae": 6013.7947162273895,
+      "rmse": 12855.919089492947,
+      "mean_actual": 7709.866090712743,
+      "mean_predicted": 6558.668621549338
+    }
+  },
+  "files_sha256": {
+    "registry.json": "025e32383c1cec78001b0ffffdc61d4d310dae2c0909c35a170c09ac4784c751",
+    "splits.csv": "709c14c50cc9e43f97fac3d4eae5c2fe19b86af7b533b6891de2cdb6375ee58f",
+    "models/baseline.json": "9f074f952900208f0db96f9068dd91c6971acdc3daf8dae2883f9c1a7141635c",
+    "models/bgnbd_gg.json": "7250cbc561c94141bf3dd22b09b7a880a45d9840628624067af06621d223a10b",
+    "models/xgboost/xgboost_model.json": "9ea13f6ce46c51c762fbfb9e345d24a3f9a50fd24713ebed35e7596418ceb9cf",
+    "models/xgboost/xgboost_meta.json": "7669cf3fdae274d36ef6f29d3dad114828b8dc71d1cd81cdbd0e03a5e6a484bd",
+    "models/xgboost_two_part/classifier.json": "65cc878d035a028436d7bac0cbe844d5818f2e4d7dbc45201e234b0e3bca5615",
+    "models/xgboost_two_part/regressor.json": "34d99b769250be594047d203d04c1f7d964a69e55ff068cf36513c6a620ae672",
+    "models/xgboost_two_part/two_part_meta.json": "f9f567bbd3774654a6166548b57678949f5bc2460e61891f37051083c0a60e37",
+    "models/xgboost_gross_4w/regressor.json": "9757a9a59e971b6f5cd46be3f2c56b7804d8e7f5db6e17cf2ee68610756f84ef",
+    "models/xgboost_gross_4w/gross_4w_meta.json": "8a2711ab404d4d5656c4e556ae8107b0f877115926c8cbc00cc6c0c7a39a5c74"
+  }
+}

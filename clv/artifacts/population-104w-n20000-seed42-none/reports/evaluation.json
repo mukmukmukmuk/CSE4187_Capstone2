@@ -1,0 +1,994 @@
+{
+  "validation": {
+    "customers": 4000,
+    "top_fraction": 0.2,
+    "actual_distribution": {
+      "p10": 0.0,
+      "p25": 0.0,
+      "p50": 0.0,
+      "p75": 2938.5,
+      "p90": 13188.9,
+      "p95": 22762.24999999998,
+      "p99": 56652.91999999986,
+      "n": 4000,
+      "mean": 4300.7285,
+      "min": 0.0,
+      "max": 292917.0,
+      "share_zero": 0.6815
+    },
+    "models": {
+      "baseline": {
+        "n": 4000,
+        "mae": 11772.5865,
+        "rmse": 29380.274540710132,
+        "bias": 6438.5415,
+        "mean_actual": 4300.7285,
+        "mean_predicted": 10739.27,
+        "total_actual": 17202914.0,
+        "total_predicted": 42957080.0,
+        "r2": -4.690846626804885,
+        "spearman": 0.26926756061730317,
+        "top": {
+          "k": 800,
+          "overlap": 279,
+          "overlap_rate": 0.34875,
+          "captured_actual_value_share": 0.39605668990336906,
+          "actual_boundary_value": 5254.0,
+          "actual_ties_at_boundary": 1,
+          "note": "overlap_rate = |predicted top ∩ actual top| / k (precision = recall for equal k); ties at the actual boundary are broken by customer_id"
+        },
+        "prediction_distribution": {
+          "p10": 0.0,
+          "p25": 0.0,
+          "p50": 0.0,
+          "p75": 8460.0,
+          "p90": 34728.0,
+          "p95": 59312.79999999994,
+          "p99": 133901.3999999996,
+          "n": 4000,
+          "mean": 10739.27,
+          "min": 0.0,
+          "max": 413280.0,
+          "share_zero": 0.684
+        },
+        "vs_baseline": {
+          "mae_ratio": 1.0,
+          "rmse_ratio": 1.0
+        }
+      },
+      "bgnbd_gg": {
+        "n": 4000,
+        "mae": 5087.88325449297,
+        "rmse": 12503.075465004846,
+        "bias": -1602.4988249816752,
+        "mean_actual": 4300.7285,
+        "mean_predicted": 2698.2296750183245,
+        "total_actual": 17202914.0,
+        "total_predicted": 10792918.700073298,
+        "r2": -0.030620760977575934,
+        "spearman": 0.26396613352393933,
+        "top": {
+          "k": 800,
+          "overlap": 269,
+          "overlap_rate": 0.33625,
+          "captured_actual_value_share": 0.37333934082513964,
+          "actual_boundary_value": 5254.0,
+          "actual_ties_at_boundary": 1,
+          "note": "overlap_rate = |predicted top ∩ actual top| / k (precision = recall for equal k); ties at the actual boundary are broken by customer_id"
+        },
+        "prediction_distribution": {
+          "p10": 0.0,
+          "p25": 0.0,
+          "p50": 0.0,
+          "p75": 5416.645626167504,
+          "p90": 9371.335599405551,
+          "p95": 11093.07342418199,
+          "p99": 18972.245316341476,
+          "n": 4000,
+          "mean": 2698.2296750183245,
+          "min": 0.0,
+          "max": 48438.72494839604,
+          "share_zero": 0.684
+        },
+        "vs_baseline": {
+          "mae_ratio": 0.43218057939034643,
+          "rmse_ratio": 0.42556019848215626
+        }
+      },
+      "xgboost": {
+        "n": 4000,
+        "mae": 5794.953362701416,
+        "rmse": 11968.6825174845,
+        "bias": -126.78064859008789,
+        "mean_actual": 4300.7285,
+        "mean_predicted": 4173.947851409912,
+        "total_actual": 17202914.0,
+        "total_predicted": 16695791.405639648,
+        "r2": 0.05559587407780664,
+        "spearman": 0.3026616704365311,
+        "top": {
+          "k": 800,
+          "overlap": 290,
+          "overlap_rate": 0.3625,
+          "captured_actual_value_share": 0.4428359249264192,
+          "actual_boundary_value": 5254.0,
+          "actual_ties_at_boundary": 1,
+          "note": "overlap_rate = |predicted top ∩ actual top| / k (precision = recall for equal k); ties at the actual boundary are broken by customer_id"
+        },
+        "prediction_distribution": {
+          "p10": 1873.4473876953125,
+          "p25": 2474.310302734375,
+          "p50": 3078.078857421875,
+          "p75": 5270.56494140625,
+          "p90": 7682.518408203125,
+          "p95": 9193.61591796875,
+          "p99": 14009.391123046871,
+          "n": 4000,
+          "mean": 4173.947851409912,
+          "min": 1816.09130859375,
+          "max": 28787.875,
+          "share_zero": 0.0
+        },
+        "vs_baseline": {
+          "mae_ratio": 0.49224130675968414,
+          "rmse_ratio": 0.40737136410690644
+        }
+      },
+      "xgboost_two_part": {
+        "n": 4000,
+        "mae": 5795.673751973115,
+        "rmse": 11957.28934602976,
+        "bias": -130.3116828138135,
+        "mean_actual": 4300.7285,
+        "mean_predicted": 4170.416817186187,
+        "total_actual": 17202914.0,
+        "total_predicted": 16681667.268744746,
+        "r2": 0.05739300369913958,
+        "spearman": 0.3030029001948734,
+        "top": {
+          "k": 800,
+          "overlap": 287,
+          "overlap_rate": 0.35875,
+          "captured_actual_value_share": 0.44231318534711295,
+          "actual_boundary_value": 5254.0,
+          "actual_ties_at_boundary": 1,
+          "note": "overlap_rate = |predicted top ∩ actual top| / k (precision = recall for equal k); ties at the actual boundary are broken by customer_id"
+        },
+        "prediction_distribution": {
+          "p10": 1968.4660859030555,
+          "p25": 2396.720883021422,
+          "p50": 3243.087020940846,
+          "p75": 5394.940301413299,
+          "p90": 7617.690637455519,
+          "p95": 9157.54773972965,
+          "p99": 12088.315404661058,
+          "n": 4000,
+          "mean": 4170.416817186187,
+          "min": 1652.745534783171,
+          "max": 22684.69913117215,
+          "share_zero": 0.0
+        },
+        "vs_baseline": {
+          "mae_ratio": 0.49230249885809846,
+          "rmse_ratio": 0.40698358109150423
+        }
+      }
+    },
+    "by_assignment_group": {
+      "control": {
+        "baseline": {
+          "n": 4000,
+          "mae": 11772.5865,
+          "rmse": 29380.274540710132,
+          "bias": 6438.5415,
+          "mean_actual": 4300.7285,
+          "mean_predicted": 10739.27,
+          "total_actual": 17202914.0,
+          "total_predicted": 42957080.0,
+          "r2": -4.690846626804885,
+          "spearman": 0.26926756061730317
+        },
+        "bgnbd_gg": {
+          "n": 4000,
+          "mae": 5087.88325449297,
+          "rmse": 12503.075465004846,
+          "bias": -1602.4988249816752,
+          "mean_actual": 4300.7285,
+          "mean_predicted": 2698.2296750183245,
+          "total_actual": 17202914.0,
+          "total_predicted": 10792918.700073298,
+          "r2": -0.030620760977575934,
+          "spearman": 0.26396613352393933
+        },
+        "xgboost": {
+          "n": 4000,
+          "mae": 5794.953362701416,
+          "rmse": 11968.6825174845,
+          "bias": -126.78064859008789,
+          "mean_actual": 4300.7285,
+          "mean_predicted": 4173.947851409912,
+          "total_actual": 17202914.0,
+          "total_predicted": 16695791.405639648,
+          "r2": 0.05559587407780664,
+          "spearman": 0.3026616704365311
+        },
+        "xgboost_two_part": {
+          "n": 4000,
+          "mae": 5795.673751973115,
+          "rmse": 11957.28934602976,
+          "bias": -130.3116828138135,
+          "mean_actual": 4300.7285,
+          "mean_predicted": 4170.416817186187,
+          "total_actual": 17202914.0,
+          "total_predicted": 16681667.268744746,
+          "r2": 0.05739300369913958,
+          "spearman": 0.3030029001948734
+        }
+      }
+    },
+    "two_part_classifier": {
+      "n": 4000,
+      "buyer_share": 0.3185,
+      "auc": 0.6870192091735955,
+      "logloss": 0.5771874348229223,
+      "brier": 0.19597815841553173
+    }
+  },
+  "test": {
+    "customers": 4000,
+    "top_fraction": 0.2,
+    "actual_distribution": {
+      "p10": 0.0,
+      "p25": 0.0,
+      "p50": 0.0,
+      "p75": 3195.0,
+      "p90": 13936.399999999994,
+      "p95": 24433.399999999936,
+      "p99": 55680.529999999824,
+      "n": 4000,
+      "mean": 4513.927,
+      "min": 0.0,
+      "max": 206914.0,
+      "share_zero": 0.67325
+    },
+    "models": {
+      "baseline": {
+        "n": 4000,
+        "mae": 12406.5215,
+        "rmse": 30925.38020254561,
+        "bias": 6499.553,
+        "mean_actual": 4513.927,
+        "mean_predicted": 11013.48,
+        "total_actual": 18055708.0,
+        "total_predicted": 44053920.0,
+        "r2": -4.794057608632626,
+        "spearman": 0.24315999200738012,
+        "top": {
+          "k": 800,
+          "overlap": 271,
+          "overlap_rate": 0.33875,
+          "captured_actual_value_share": 0.38850269286488587,
+          "actual_boundary_value": 5437.0,
+          "actual_ties_at_boundary": 1,
+          "note": "overlap_rate = |predicted top ∩ actual top| / k (precision = recall for equal k); ties at the actual boundary are broken by customer_id"
+        },
+        "prediction_distribution": {
+          "p10": 0.0,
+          "p25": 0.0,
+          "p50": 0.0,
+          "p75": 8938.0,
+          "p90": 35578.79999999998,
+          "p95": 61937.99999999997,
+          "p99": 129750.27999999929,
+          "n": 4000,
+          "mean": 11013.48,
+          "min": 0.0,
+          "max": 464583.99999999994,
+          "share_zero": 0.6865
+        },
+        "vs_baseline": {
+          "mae_ratio": 1.0,
+          "rmse_ratio": 1.0
+        }
+      },
+      "bgnbd_gg": {
+        "n": 4000,
+        "mae": 5332.928982137464,
+        "rmse": 13159.015741861123,
+        "bias": -1855.9410370604337,
+        "mean_actual": 4513.927,
+        "mean_predicted": 2657.985962939566,
+        "total_actual": 18055708.0,
+        "total_predicted": 10631943.851758264,
+        "r2": -0.04905806427869264,
+        "spearman": 0.23725553095186344,
+        "top": {
+          "k": 800,
+          "overlap": 257,
+          "overlap_rate": 0.32125,
+          "captured_actual_value_share": 0.35897961980447524,
+          "actual_boundary_value": 5437.0,
+          "actual_ties_at_boundary": 1,
+          "note": "overlap_rate = |predicted top ∩ actual top| / k (precision = recall for equal k); ties at the actual boundary are broken by customer_id"
+        },
+        "prediction_distribution": {
+          "p10": 0.0,
+          "p25": 0.0,
+          "p50": 0.0,
+          "p75": 5470.83561652416,
+          "p90": 9310.351810913951,
+          "p95": 11220.563031318736,
+          "p99": 18454.116527760365,
+          "n": 4000,
+          "mean": 2657.985962939566,
+          "min": 0.0,
+          "max": 58060.58318203074,
+          "share_zero": 0.6865
+        },
+        "vs_baseline": {
+          "mae_ratio": 0.4298488486186449,
+          "rmse_ratio": 0.4255086164075016
+        }
+      },
+      "xgboost": {
+        "n": 4000,
+        "mae": 6006.0854309387205,
+        "rmse": 12693.985646236131,
+        "bias": -332.320046661377,
+        "mean_actual": 4513.927,
+        "mean_predicted": 4181.6069533386235,
+        "total_actual": 18055708.0,
+        "total_predicted": 16726427.813354492,
+        "r2": 0.02377771035861098,
+        "spearman": 0.2809882700632636,
+        "top": {
+          "k": 800,
+          "overlap": 285,
+          "overlap_rate": 0.35625,
+          "captured_actual_value_share": 0.4034702428862412,
+          "actual_boundary_value": 5437.0,
+          "actual_ties_at_boundary": 1,
+          "note": "overlap_rate = |predicted top ∩ actual top| / k (precision = recall for equal k); ties at the actual boundary are broken by customer_id"
+        },
+        "prediction_distribution": {
+          "p10": 1873.4473876953125,
+          "p25": 2471.381103515625,
+          "p50": 3071.214111328125,
+          "p75": 5196.0504150390625,
+          "p90": 7687.065283203125,
+          "p95": 9334.131152343745,
+          "p99": 14372.982685546847,
+          "n": 4000,
+          "mean": 4181.6069533386235,
+          "min": 1816.09130859375,
+          "max": 29328.728515625,
+          "share_zero": 0.0
+        },
+        "vs_baseline": {
+          "mae_ratio": 0.48410712309157083,
+          "rmse_ratio": 0.41047144976381666
+        }
+      },
+      "xgboost_two_part": {
+        "n": 4000,
+        "mae": 5992.423587396038,
+        "rmse": 12646.157980240196,
+        "bias": -332.7808455033199,
+        "mean_actual": 4513.927,
+        "mean_predicted": 4181.1461544966805,
+        "total_actual": 18055708.0,
+        "total_predicted": 16724584.617986722,
+        "r2": 0.031120159947872872,
+        "spearman": 0.28455164699204905,
+        "top": {
+          "k": 800,
+          "overlap": 291,
+          "overlap_rate": 0.36375,
+          "captured_actual_value_share": 0.42274400958248115,
+          "actual_boundary_value": 5437.0,
+          "actual_ties_at_boundary": 1,
+          "note": "overlap_rate = |predicted top ∩ actual top| / k (precision = recall for equal k); ties at the actual boundary are broken by customer_id"
+        },
+        "prediction_distribution": {
+          "p10": 1968.4660859030555,
+          "p25": 2380.5859591249027,
+          "p50": 3224.1282553550845,
+          "p75": 5389.375261849345,
+          "p90": 7581.212731143966,
+          "p95": 9258.077939924156,
+          "p99": 12945.767155658219,
+          "n": 4000,
+          "mean": 4181.1461544966805,
+          "min": 1652.745534783171,
+          "max": 23159.537913233507,
+          "share_zero": 0.0
+        },
+        "vs_baseline": {
+          "mae_ratio": 0.4830059406575838,
+          "rmse_ratio": 0.40892489914155467
+        }
+      }
+    },
+    "by_assignment_group": {
+      "control": {
+        "baseline": {
+          "n": 4000,
+          "mae": 12406.5215,
+          "rmse": 30925.38020254561,
+          "bias": 6499.553,
+          "mean_actual": 4513.927,
+          "mean_predicted": 11013.48,
+          "total_actual": 18055708.0,
+          "total_predicted": 44053920.0,
+          "r2": -4.794057608632626,
+          "spearman": 0.24315999200738012
+        },
+        "bgnbd_gg": {
+          "n": 4000,
+          "mae": 5332.928982137464,
+          "rmse": 13159.015741861123,
+          "bias": -1855.9410370604337,
+          "mean_actual": 4513.927,
+          "mean_predicted": 2657.985962939566,
+          "total_actual": 18055708.0,
+          "total_predicted": 10631943.851758264,
+          "r2": -0.04905806427869264,
+          "spearman": 0.23725553095186344
+        },
+        "xgboost": {
+          "n": 4000,
+          "mae": 6006.0854309387205,
+          "rmse": 12693.985646236131,
+          "bias": -332.320046661377,
+          "mean_actual": 4513.927,
+          "mean_predicted": 4181.6069533386235,
+          "total_actual": 18055708.0,
+          "total_predicted": 16726427.813354492,
+          "r2": 0.02377771035861098,
+          "spearman": 0.2809882700632636
+        },
+        "xgboost_two_part": {
+          "n": 4000,
+          "mae": 5992.423587396038,
+          "rmse": 12646.157980240196,
+          "bias": -332.7808455033199,
+          "mean_actual": 4513.927,
+          "mean_predicted": 4181.1461544966805,
+          "total_actual": 18055708.0,
+          "total_predicted": 16724584.617986722,
+          "r2": 0.031120159947872872,
+          "spearman": 0.28455164699204905
+        }
+      }
+    },
+    "two_part_classifier": {
+      "n": 4000,
+      "buyer_share": 0.32675,
+      "auc": 0.6703134681970401,
+      "logloss": 0.5934622779685925,
+      "brier": 0.2032476889362599
+    }
+  },
+  "by_history": {
+    "validation": {
+      "complete": {
+        "customers": 4000,
+        "top_fraction": 0.2,
+        "actual_distribution": {
+          "p10": 0.0,
+          "p25": 0.0,
+          "p50": 0.0,
+          "p75": 2938.5,
+          "p90": 13188.9,
+          "p95": 22762.24999999998,
+          "p99": 56652.91999999986,
+          "n": 4000,
+          "mean": 4300.7285,
+          "min": 0.0,
+          "max": 292917.0,
+          "share_zero": 0.6815
+        },
+        "models": {
+          "baseline": {
+            "n": 4000,
+            "mae": 11772.5865,
+            "rmse": 29380.274540710132,
+            "bias": 6438.5415,
+            "mean_actual": 4300.7285,
+            "mean_predicted": 10739.27,
+            "total_actual": 17202914.0,
+            "total_predicted": 42957080.0,
+            "r2": -4.690846626804885,
+            "spearman": 0.26926756061730317,
+            "top": {
+              "k": 800,
+              "overlap": 279,
+              "overlap_rate": 0.34875,
+              "captured_actual_value_share": 0.39605668990336906,
+              "actual_boundary_value": 5254.0,
+              "actual_ties_at_boundary": 1,
+              "note": "overlap_rate = |predicted top ∩ actual top| / k (precision = recall for equal k); ties at the actual boundary are broken by customer_id"
+            },
+            "prediction_distribution": {
+              "p10": 0.0,
+              "p25": 0.0,
+              "p50": 0.0,
+              "p75": 8460.0,
+              "p90": 34728.0,
+              "p95": 59312.79999999994,
+              "p99": 133901.3999999996,
+              "n": 4000,
+              "mean": 10739.27,
+              "min": 0.0,
+              "max": 413280.0,
+              "share_zero": 0.684
+            },
+            "vs_baseline": {
+              "mae_ratio": 1.0,
+              "rmse_ratio": 1.0
+            }
+          },
+          "bgnbd_gg": {
+            "n": 4000,
+            "mae": 5087.88325449297,
+            "rmse": 12503.075465004846,
+            "bias": -1602.4988249816752,
+            "mean_actual": 4300.7285,
+            "mean_predicted": 2698.2296750183245,
+            "total_actual": 17202914.0,
+            "total_predicted": 10792918.700073298,
+            "r2": -0.030620760977575934,
+            "spearman": 0.26396613352393933,
+            "top": {
+              "k": 800,
+              "overlap": 269,
+              "overlap_rate": 0.33625,
+              "captured_actual_value_share": 0.37333934082513964,
+              "actual_boundary_value": 5254.0,
+              "actual_ties_at_boundary": 1,
+              "note": "overlap_rate = |predicted top ∩ actual top| / k (precision = recall for equal k); ties at the actual boundary are broken by customer_id"
+            },
+            "prediction_distribution": {
+              "p10": 0.0,
+              "p25": 0.0,
+              "p50": 0.0,
+              "p75": 5416.645626167504,
+              "p90": 9371.335599405551,
+              "p95": 11093.07342418199,
+              "p99": 18972.245316341476,
+              "n": 4000,
+              "mean": 2698.2296750183245,
+              "min": 0.0,
+              "max": 48438.72494839604,
+              "share_zero": 0.684
+            },
+            "vs_baseline": {
+              "mae_ratio": 0.43218057939034643,
+              "rmse_ratio": 0.42556019848215626
+            }
+          },
+          "xgboost": {
+            "n": 4000,
+            "mae": 5794.953362701416,
+            "rmse": 11968.6825174845,
+            "bias": -126.78064859008789,
+            "mean_actual": 4300.7285,
+            "mean_predicted": 4173.947851409912,
+            "total_actual": 17202914.0,
+            "total_predicted": 16695791.405639648,
+            "r2": 0.05559587407780664,
+            "spearman": 0.3026616704365311,
+            "top": {
+              "k": 800,
+              "overlap": 290,
+              "overlap_rate": 0.3625,
+              "captured_actual_value_share": 0.4428359249264192,
+              "actual_boundary_value": 5254.0,
+              "actual_ties_at_boundary": 1,
+              "note": "overlap_rate = |predicted top ∩ actual top| / k (precision = recall for equal k); ties at the actual boundary are broken by customer_id"
+            },
+            "prediction_distribution": {
+              "p10": 1873.4473876953125,
+              "p25": 2474.310302734375,
+              "p50": 3078.078857421875,
+              "p75": 5270.56494140625,
+              "p90": 7682.518408203125,
+              "p95": 9193.61591796875,
+              "p99": 14009.391123046871,
+              "n": 4000,
+              "mean": 4173.947851409912,
+              "min": 1816.09130859375,
+              "max": 28787.875,
+              "share_zero": 0.0
+            },
+            "vs_baseline": {
+              "mae_ratio": 0.49224130675968414,
+              "rmse_ratio": 0.40737136410690644
+            }
+          },
+          "xgboost_two_part": {
+            "n": 4000,
+            "mae": 5795.673751973115,
+            "rmse": 11957.28934602976,
+            "bias": -130.3116828138135,
+            "mean_actual": 4300.7285,
+            "mean_predicted": 4170.416817186187,
+            "total_actual": 17202914.0,
+            "total_predicted": 16681667.268744746,
+            "r2": 0.05739300369913958,
+            "spearman": 0.3030029001948734,
+            "top": {
+              "k": 800,
+              "overlap": 287,
+              "overlap_rate": 0.35875,
+              "captured_actual_value_share": 0.44231318534711295,
+              "actual_boundary_value": 5254.0,
+              "actual_ties_at_boundary": 1,
+              "note": "overlap_rate = |predicted top ∩ actual top| / k (precision = recall for equal k); ties at the actual boundary are broken by customer_id"
+            },
+            "prediction_distribution": {
+              "p10": 1968.4660859030555,
+              "p25": 2396.720883021422,
+              "p50": 3243.087020940846,
+              "p75": 5394.940301413299,
+              "p90": 7617.690637455519,
+              "p95": 9157.54773972965,
+              "p99": 12088.315404661058,
+              "n": 4000,
+              "mean": 4170.416817186187,
+              "min": 1652.745534783171,
+              "max": 22684.69913117215,
+              "share_zero": 0.0
+            },
+            "vs_baseline": {
+              "mae_ratio": 0.49230249885809846,
+              "rmse_ratio": 0.40698358109150423
+            }
+          }
+        },
+        "by_assignment_group": {
+          "control": {
+            "baseline": {
+              "n": 4000,
+              "mae": 11772.5865,
+              "rmse": 29380.274540710132,
+              "bias": 6438.5415,
+              "mean_actual": 4300.7285,
+              "mean_predicted": 10739.27,
+              "total_actual": 17202914.0,
+              "total_predicted": 42957080.0,
+              "r2": -4.690846626804885,
+              "spearman": 0.26926756061730317
+            },
+            "bgnbd_gg": {
+              "n": 4000,
+              "mae": 5087.88325449297,
+              "rmse": 12503.075465004846,
+              "bias": -1602.4988249816752,
+              "mean_actual": 4300.7285,
+              "mean_predicted": 2698.2296750183245,
+              "total_actual": 17202914.0,
+              "total_predicted": 10792918.700073298,
+              "r2": -0.030620760977575934,
+              "spearman": 0.26396613352393933
+            },
+            "xgboost": {
+              "n": 4000,
+              "mae": 5794.953362701416,
+              "rmse": 11968.6825174845,
+              "bias": -126.78064859008789,
+              "mean_actual": 4300.7285,
+              "mean_predicted": 4173.947851409912,
+              "total_actual": 17202914.0,
+              "total_predicted": 16695791.405639648,
+              "r2": 0.05559587407780664,
+              "spearman": 0.3026616704365311
+            },
+            "xgboost_two_part": {
+              "n": 4000,
+              "mae": 5795.673751973115,
+              "rmse": 11957.28934602976,
+              "bias": -130.3116828138135,
+              "mean_actual": 4300.7285,
+              "mean_predicted": 4170.416817186187,
+              "total_actual": 17202914.0,
+              "total_predicted": 16681667.268744746,
+              "r2": 0.05739300369913958,
+              "spearman": 0.3030029001948734
+            }
+          }
+        }
+      },
+      "incomplete": {
+        "customers": 0
+      }
+    },
+    "test": {
+      "complete": {
+        "customers": 4000,
+        "top_fraction": 0.2,
+        "actual_distribution": {
+          "p10": 0.0,
+          "p25": 0.0,
+          "p50": 0.0,
+          "p75": 3195.0,
+          "p90": 13936.399999999994,
+          "p95": 24433.399999999936,
+          "p99": 55680.529999999824,
+          "n": 4000,
+          "mean": 4513.927,
+          "min": 0.0,
+          "max": 206914.0,
+          "share_zero": 0.67325
+        },
+        "models": {
+          "baseline": {
+            "n": 4000,
+            "mae": 12406.5215,
+            "rmse": 30925.38020254561,
+            "bias": 6499.553,
+            "mean_actual": 4513.927,
+            "mean_predicted": 11013.48,
+            "total_actual": 18055708.0,
+            "total_predicted": 44053920.0,
+            "r2": -4.794057608632626,
+            "spearman": 0.24315999200738012,
+            "top": {
+              "k": 800,
+              "overlap": 271,
+              "overlap_rate": 0.33875,
+              "captured_actual_value_share": 0.38850269286488587,
+              "actual_boundary_value": 5437.0,
+              "actual_ties_at_boundary": 1,
+              "note": "overlap_rate = |predicted top ∩ actual top| / k (precision = recall for equal k); ties at the actual boundary are broken by customer_id"
+            },
+            "prediction_distribution": {
+              "p10": 0.0,
+              "p25": 0.0,
+              "p50": 0.0,
+              "p75": 8938.0,
+              "p90": 35578.79999999998,
+              "p95": 61937.99999999997,
+              "p99": 129750.27999999929,
+              "n": 4000,
+              "mean": 11013.48,
+              "min": 0.0,
+              "max": 464583.99999999994,
+              "share_zero": 0.6865
+            },
+            "vs_baseline": {
+              "mae_ratio": 1.0,
+              "rmse_ratio": 1.0
+            }
+          },
+          "bgnbd_gg": {
+            "n": 4000,
+            "mae": 5332.928982137464,
+            "rmse": 13159.015741861123,
+            "bias": -1855.9410370604337,
+            "mean_actual": 4513.927,
+            "mean_predicted": 2657.985962939566,
+            "total_actual": 18055708.0,
+            "total_predicted": 10631943.851758264,
+            "r2": -0.04905806427869264,
+            "spearman": 0.23725553095186344,
+            "top": {
+              "k": 800,
+              "overlap": 257,
+              "overlap_rate": 0.32125,
+              "captured_actual_value_share": 0.35897961980447524,
+              "actual_boundary_value": 5437.0,
+              "actual_ties_at_boundary": 1,
+              "note": "overlap_rate = |predicted top ∩ actual top| / k (precision = recall for equal k); ties at the actual boundary are broken by customer_id"
+            },
+            "prediction_distribution": {
+              "p10": 0.0,
+              "p25": 0.0,
+              "p50": 0.0,
+              "p75": 5470.83561652416,
+              "p90": 9310.351810913951,
+              "p95": 11220.563031318736,
+              "p99": 18454.116527760365,
+              "n": 4000,
+              "mean": 2657.985962939566,
+              "min": 0.0,
+              "max": 58060.58318203074,
+              "share_zero": 0.6865
+            },
+            "vs_baseline": {
+              "mae_ratio": 0.4298488486186449,
+              "rmse_ratio": 0.4255086164075016
+            }
+          },
+          "xgboost": {
+            "n": 4000,
+            "mae": 6006.0854309387205,
+            "rmse": 12693.985646236131,
+            "bias": -332.320046661377,
+            "mean_actual": 4513.927,
+            "mean_predicted": 4181.6069533386235,
+            "total_actual": 18055708.0,
+            "total_predicted": 16726427.813354492,
+            "r2": 0.02377771035861098,
+            "spearman": 0.2809882700632636,
+            "top": {
+              "k": 800,
+              "overlap": 285,
+              "overlap_rate": 0.35625,
+              "captured_actual_value_share": 0.4034702428862412,
+              "actual_boundary_value": 5437.0,
+              "actual_ties_at_boundary": 1,
+              "note": "overlap_rate = |predicted top ∩ actual top| / k (precision = recall for equal k); ties at the actual boundary are broken by customer_id"
+            },
+            "prediction_distribution": {
+              "p10": 1873.4473876953125,
+              "p25": 2471.381103515625,
+              "p50": 3071.214111328125,
+              "p75": 5196.0504150390625,
+              "p90": 7687.065283203125,
+              "p95": 9334.131152343745,
+              "p99": 14372.982685546847,
+              "n": 4000,
+              "mean": 4181.6069533386235,
+              "min": 1816.09130859375,
+              "max": 29328.728515625,
+              "share_zero": 0.0
+            },
+            "vs_baseline": {
+              "mae_ratio": 0.48410712309157083,
+              "rmse_ratio": 0.41047144976381666
+            }
+          },
+          "xgboost_two_part": {
+            "n": 4000,
+            "mae": 5992.423587396038,
+            "rmse": 12646.157980240196,
+            "bias": -332.7808455033199,
+            "mean_actual": 4513.927,
+            "mean_predicted": 4181.1461544966805,
+            "total_actual": 18055708.0,
+            "total_predicted": 16724584.617986722,
+            "r2": 0.031120159947872872,
+            "spearman": 0.28455164699204905,
+            "top": {
+              "k": 800,
+              "overlap": 291,
+              "overlap_rate": 0.36375,
+              "captured_actual_value_share": 0.42274400958248115,
+              "actual_boundary_value": 5437.0,
+              "actual_ties_at_boundary": 1,
+              "note": "overlap_rate = |predicted top ∩ actual top| / k (precision = recall for equal k); ties at the actual boundary are broken by customer_id"
+            },
+            "prediction_distribution": {
+              "p10": 1968.4660859030555,
+              "p25": 2380.5859591249027,
+              "p50": 3224.1282553550845,
+              "p75": 5389.375261849345,
+              "p90": 7581.212731143966,
+              "p95": 9258.077939924156,
+              "p99": 12945.767155658219,
+              "n": 4000,
+              "mean": 4181.1461544966805,
+              "min": 1652.745534783171,
+              "max": 23159.537913233507,
+              "share_zero": 0.0
+            },
+            "vs_baseline": {
+              "mae_ratio": 0.4830059406575838,
+              "rmse_ratio": 0.40892489914155467
+            }
+          }
+        },
+        "by_assignment_group": {
+          "control": {
+            "baseline": {
+              "n": 4000,
+              "mae": 12406.5215,
+              "rmse": 30925.38020254561,
+              "bias": 6499.553,
+              "mean_actual": 4513.927,
+              "mean_predicted": 11013.48,
+              "total_actual": 18055708.0,
+              "total_predicted": 44053920.0,
+              "r2": -4.794057608632626,
+              "spearman": 0.24315999200738012
+            },
+            "bgnbd_gg": {
+              "n": 4000,
+              "mae": 5332.928982137464,
+              "rmse": 13159.015741861123,
+              "bias": -1855.9410370604337,
+              "mean_actual": 4513.927,
+              "mean_predicted": 2657.985962939566,
+              "total_actual": 18055708.0,
+              "total_predicted": 10631943.851758264,
+              "r2": -0.04905806427869264,
+              "spearman": 0.23725553095186344
+            },
+            "xgboost": {
+              "n": 4000,
+              "mae": 6006.0854309387205,
+              "rmse": 12693.985646236131,
+              "bias": -332.320046661377,
+              "mean_actual": 4513.927,
+              "mean_predicted": 4181.6069533386235,
+              "total_actual": 18055708.0,
+              "total_predicted": 16726427.813354492,
+              "r2": 0.02377771035861098,
+              "spearman": 0.2809882700632636
+            },
+            "xgboost_two_part": {
+              "n": 4000,
+              "mae": 5992.423587396038,
+              "rmse": 12646.157980240196,
+              "bias": -332.7808455033199,
+              "mean_actual": 4513.927,
+              "mean_predicted": 4181.1461544966805,
+              "total_actual": 18055708.0,
+              "total_predicted": 16724584.617986722,
+              "r2": 0.031120159947872872,
+              "spearman": 0.28455164699204905
+            }
+          }
+        }
+      },
+      "incomplete": {
+        "customers": 0
+      }
+    }
+  },
+  "gross_4w": {
+    "validation": {
+      "n": 430,
+      "mae": 4533.671140307049,
+      "rmse": 7432.846438571356,
+      "bias": 75.79111441678779,
+      "mean_actual": 6449.9139534883725,
+      "mean_predicted": 6525.70506790516,
+      "total_actual": 2773463.0,
+      "total_predicted": 2806053.1791992188,
+      "r2": 0.010027103574589025,
+      "spearman": 0.05249844633328684
+    },
+    "test": {
+      "n": 463,
+      "mae": 6013.7947162273895,
+      "rmse": 12855.919089492947,
+      "bias": -1151.1974691634043,
+      "mean_actual": 7709.866090712743,
+      "mean_predicted": 6558.668621549338,
+      "total_actual": 3569668.0,
+      "total_predicted": 3036663.5717773438,
+      "r2": -0.010859248422660617,
+      "spearman": -0.04535107384681623
+    },
+    "assignment_diagnostic": {
+      "available": true,
+      "groups": {
+        "control": {
+          "customers": 20000,
+          "buyers": 2221,
+          "buyer_share": 0.11105,
+          "mean_gross_per_buyer": 6996.390364700585,
+          "median_gross_per_buyer": 4310.0,
+          "std_gross_per_buyer": 9826.290121301998,
+          "predicted_buyers": 463,
+          "mean_predicted_gross_per_buyer": 6558.668621549338,
+          "mae_on_buyers": 6013.7947162273895
+        },
+        "treatment": {
+          "customers": 0,
+          "buyers": 0,
+          "buyer_share": null,
+          "mean_gross_per_buyer": null,
+          "median_gross_per_buyer": null,
+          "std_gross_per_buyer": null,
+          "predicted_buyers": 0
+        }
+      },
+      "note": "descriptive diagnostic over customers with a complete 4-week window; treatment customers are never used to train the 4-week model",
+      "treatment_assigned_in_window_share": null,
+      "t0_equals_as_of_at": true
+    }
+  }
+}

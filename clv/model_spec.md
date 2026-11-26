@@ -146,15 +146,16 @@ KRW 환산·환율 적용·원화 예산과의 정합성은 CLV 범위에서 제
 - 기존 전달 번들은 그대로 보존한다(`policy_condition = observed_experiment_mix`, 번들 형식 1, 4주 모델 없음).
   52주 추론은 이전과 같은 값을 내고, 4주 값은 만들지 않는다(결측 + `gross_4w_status = "not_trained"`).
 - 새 번들(형식 2)은 정책, 4주 모델의 버전·체크섬·Test 지표를 `model_card.json`의 `policy_condition`과 `gross_4w`에 남긴다.
-- 시뮬레이터 변경이 확정된 뒤 다음을 진행한다(이번 작업에서는 하지 않았다).
-  - 최종 데이터 생성(20,000명)
-  - Control-only 52주 모델과 4주 모델의 최종 학습
-  - 성능 평가
-  - 새 번들 생성과 전달 번들 교체
+- 시뮬레이터 `d1992c4`의 쿠폰 미발송 104주 데이터(20,000명, seed 42)로 최종 학습한 후보 번들이
+  [`artifacts/population-104w-n20000-seed42-none/`](artifacts/population-104w-n20000-seed42-none/README.md)에 있다.
+  데이터 생성 명령, seed 43 평가, 기존 번들과의 같은 고객 비교, 4주 기준선 비교는 그 README에 있다.
+- 전달 번들 교체(`HANDOFF_BUNDLE`, `api.md` 수치)는 아직 하지 않았다. 4주 모델이 고객별 차이를 예측하지 못하는 문제와
+  평균을 낮게 잡는 문제를 정한 뒤 진행한다.
 - 재학습 명령은 다음과 같다. 이미 번들이 있는 디렉터리에는 `--overwrite` 없이 쓰지 않는다. `--require-gross-4w`는
   4주 모델을 학습하지 못하면 아무것도 저장하지 않게 한다.
 
   ```bash
-  python -m clv train --weekly <features 디렉터리> --ledger <dataset 디렉터리> --cutoff 2025-01-06 \
+  # --cutoff를 생략하면 실험 기준시점(as_of_at)이다. 104주 데이터는 2024-12-30이다.
+  python -m clv train --weekly <features 디렉터리> --ledger <dataset 디렉터리> \
     --require-gross-4w --output <새 번들 디렉터리>
   ```
