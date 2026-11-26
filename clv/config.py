@@ -20,13 +20,15 @@ DEFAULT_TWO_PART_REGRESSOR_GRID = {
     "min_child_weight": [1, 5],
     "learning_rate": [0.05],
 }
-# 4주 조건부 총구매액 XGBoost(Control 구매 고객 회귀, 검증 RMSE로 선택). 금액이 양수라 gamma도 후보다.
+# 4주 조건부 총구매액 XGBoost 후보(xgboost_gross_4w: 제곱오차, xgboost_gamma_gross_4w: gamma)의 공통 탐색 그리드.
+# 목적함수는 후보마다 정해지므로 여기 두지 않는다(두면 후보의 목적함수로 덮어쓴다).
 DEFAULT_GROSS_4W_GRID = {
-    "objective": ["reg:squarederror", "reg:gamma"],
     "max_depth": [3, 5],
     "min_child_weight": [1, 5],
     "learning_rate": [0.05],
 }
+# 4주 후보(gross4w.GROSS_CANDIDATES와 같은 순서: 단순한 것부터)
+GROSS_4W_MODELS = ("mean_gross_4w", "gamma_gamma_gross_4w", "xgboost_gross_4w", "xgboost_gamma_gross_4w")
 # 학습 모집단 정책(``population`` 모듈). 새 학습의 기본은 Control-only다.
 POPULATION_POLICIES = ("control_no_coupon", "observed_experiment_mix")
 # 이 설정 항목이 생기기 전 registry(기존 번들)에 적용하는 값. 기존 번들은 배정군을 섞어 학습했다.
@@ -68,7 +70,11 @@ class CLVConfig:
         xgb_fixed: 모든 그리드 점에 공통인 XGBoost 설정(두 파트 XGBoost도 같이 쓴다).
         two_part_classifier_grid: 두 파트 XGBoost 1파트(구매 여부 분류) 탐색 그리드.
         two_part_regressor_grid: 두 파트 XGBoost 2파트(구매 고객 결제액 회귀) 탐색 그리드.
-        gross_4w_grid: 4주 조건부 총구매액 XGBoost(``xgboost_gross_4w``) 탐색 그리드.
+        gross_4w_grid: 4주 조건부 총구매액 XGBoost 후보 두 개의 공통 탐색 그리드(목적함수 제외).
+        gross_4w_final_model: 4주 기본 모델. ``auto``는 교차검증 1-표준오차 규칙(``gross4w``), 아니면 후보 이름 하나.
+        gross_4w_cv_folds: 4주 기본 모델 선택 교차검증의 겹 수(Train + Validation 구매 고객, 고객 단위).
+        gross_4w_cv_repeats: 그 교차검증을 다른 seed로 반복하는 횟수.
+        gross_4w_bootstrap: 4주 후보 Test 지표의 고객 단위 Bootstrap 횟수(0이면 구간을 만들지 않는다).
     """
 
     seed: int = 42
@@ -92,6 +98,10 @@ class CLVConfig:
         default_factory=lambda: {key: list(value) for key, value in DEFAULT_TWO_PART_REGRESSOR_GRID.items()})
     gross_4w_grid: dict = field(
         default_factory=lambda: {key: list(value) for key, value in DEFAULT_GROSS_4W_GRID.items()})
+    gross_4w_final_model: str = "auto"
+    gross_4w_cv_folds: int = 5
+    gross_4w_cv_repeats: int = 3
+    gross_4w_bootstrap: int = 1000
 
     def __post_init__(self):
         """비율 범위와 허용 선택지를 검사한다(잘못되면 ValueError)."""
@@ -111,6 +121,12 @@ class CLVConfig:
                 raise ValueError(f"{name} must be one of {allowed}")
         if self.final_model not in ("auto", "baseline", "bgnbd_gg", "xgboost", "xgboost_two_part"):
             raise ValueError("final_model must be auto, baseline, bgnbd_gg, xgboost or xgboost_two_part")
+        if self.gross_4w_final_model not in ("auto", *GROSS_4W_MODELS):
+            raise ValueError(f"gross_4w_final_model must be auto or one of {GROSS_4W_MODELS}")
+        if int(self.gross_4w_cv_folds) < 2 or int(self.gross_4w_cv_repeats) < 1 or int(self.gross_4w_bootstrap) < 0:
+            raise ValueError("gross_4w_cv_folds must be >= 2, gross_4w_cv_repeats >= 1 and gross_4w_bootstrap >= 0")
+        self.gross_4w_cv_folds, self.gross_4w_cv_repeats = int(self.gross_4w_cv_folds), int(self.gross_4w_cv_repeats)
+        self.gross_4w_bootstrap = int(self.gross_4w_bootstrap)
 
     def to_dict(self) -> dict:
         """JSON(registry) 저장용 dict. ``split_fractions``는 list로 바꾼다."""

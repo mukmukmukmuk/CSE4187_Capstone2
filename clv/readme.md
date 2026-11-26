@@ -144,9 +144,11 @@ clv = predict_clv("artifacts/features", ledger="artifacts/small/raw.sqlite", mod
   * 예측 변수는 XGBoost와 같은 17개다. 학습 구매 고객이 20명 미만이면 `failed`로 기록한다.
   * 예측 CSV에 `purchase_probability_52w`, `expected_amount_if_purchase` 보조 열을 붙이고, 1파트의 AUC·로그 손실·Brier 점수를 `evaluation.json → two_part_classifier`에 남긴다.
 * 최종 모델(`final_model="auto"`)은 4개 모델 중 Validation RMSE가 가장 낮은 모델이다. Test는 보고에만 쓴다.
-* **4주 조건부 총구매액 XGBoost**(`xgboost_gross_4w`): 학습 대상(Control) 중 4주 안에 구매한 고객의 `actual_gross_4w_if_purchase`만 회귀한다(`squarederror`/`gamma`, 구매한 Validation 고객의 RMSE로 선택). 금액이 0인 구매 고객도 정답으로 쓰며, 이때는 `gamma` 후보를 빼고 기록한다. 52주 모델과 독립적으로 학습·저장·평가하며 최종 모델 선택에 들어가지 않는다. 52주 정답을 나누거나 두 파트 모델의 금액 파트를 재사용하지 않는다.
+* **4주 조건부 총구매액 후보 넷**: 학습 대상(Control) 중 4주 안에 구매한 고객의 `actual_gross_4w_if_purchase`를 예측한다. 52주 모델과 독립적으로 학습·저장·평가하며 52주 최종 모델 선택에 들어가지 않는다. 52주 정답을 나누거나 두 파트 모델의 금액 파트를 재사용하지 않는다.
+  * 후보: `mean_gross_4w`(Train 구매 고객 평균), `gamma_gamma_gross_4w`(Gamma-Gamma 기대 거래 금액 × Train 배율, 원장 필요), `xgboost_gross_4w`(XGBoost 제곱오차), `xgboost_gamma_gross_4w`(XGBoost gamma, 금액 0인 구매 고객이 있으면 `skipped`). 모두 번들에 저장하고 추론에서 `gross_4w_model`로 고를 수 있다.
+  * 기본 모델: Train + Validation 구매 고객의 반복 5겹 교차검증 제곱오차에 1-표준오차 규칙을 적용해, 최선과 잡음 수준 차이인 후보 중 가장 단순한 것을 고른다([model_spec.md](model_spec.md) 3장). Test는 후보별 보고(Bootstrap 95% 구간 포함)에만 쓴다.
   * 쿠폰 미발송 조건의 모델이므로 `observed_experiment_mix`에서는 학습하지 않는다(`skipped`).
-  * 학습 구매 고객이 20명 미만이면 `failed`로 기록하고 52주 모델은 그대로 저장한다. 그 밖의 오류는 학습을 멈춘다. 최종 학습에서는 `--require-gross-4w`로 4주 모델이 없으면 아무것도 저장하지 않게 한다.
+  * 학습 구매 고객이 20명 미만이면 4주 후보 모두 `failed`로 기록하고 52주 모델은 그대로 저장한다. 그 밖의 오류는 학습을 멈춘다. 최종 학습에서는 `--require-gross-4w`로 4주 모델이 없으면 아무것도 저장하지 않게 한다.
 
 ## 평가 (WBS 4.6)
 
@@ -182,7 +184,7 @@ Uplift 담당은 같은 고객·같은 t0의 `p0`(쿠폰 미발송 시 4주 구�
 학습 산출물(`results/clv/`): `model_card.json`(모델 버전·코드·라이브러리 버전·학습 데이터 출처·파일 체크섬),
 `registry.json`(기준시점·계약·설정·학습 모집단 정책(`population`)·모델 상태·최종 모델·지표·4주 모델(`gross_4w`)·경고),
 `splits.csv`(t0 이력이 있는 모든 고객의 분할(`unused` 포함), 배정, `policy_eligible`, `history_complete`, `training_population`),
-`models/`(baseline.json, bgnbd_gg.json, xgboost/, xgboost_two_part/, xgboost_gross_4w/),
+`models/`(baseline.json, bgnbd_gg.json, xgboost/, xgboost_two_part/, 4주 후보 mean_gross_4w.json, gamma_gamma_gross_4w.json, xgboost_gross_4w/, xgboost_gamma_gross_4w/),
 `reports/`(validation.json, eligible_cutoffs.csv, evaluation.json, bgnbd_sensitivity.csv, deciles_test.csv,
 top20_test.csv, labelled_predictions.csv, gross_4w_labelled_predictions.csv).
 

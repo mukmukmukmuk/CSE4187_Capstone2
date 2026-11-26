@@ -22,6 +22,7 @@ from .config import load_config
 from .io import jsonable
 
 MODELS = ("baseline", "bgnbd_gg", "xgboost", "xgboost_two_part")
+GROSS_MODELS = ("mean_gross_4w", "gamma_gamma_gross_4w", "xgboost_gross_4w", "xgboost_gamma_gross_4w")
 
 
 def _inputs(parser, weekly_required: bool = True):
@@ -66,6 +67,7 @@ def build_parser() -> argparse.ArgumentParser:
     predict.add_argument("--model-dir", type=Path, default=Path("results/clv"))
     predict.add_argument("--reference-week", help="prediction cutoff; default: experiment as_of_at or data end")
     predict.add_argument("--model", choices=MODELS, help="default: registry final model")
+    predict.add_argument("--gross-4w-model", choices=GROSS_MODELS, help="4-week model; default: registry default")
     predict.add_argument("--output", type=Path, default=Path("results/clv_predictions.csv"))
     predict.add_argument("--customers", type=Path, help="text/CSV file of customer IDs to predict (default: all)")
     run = commands.add_parser("run")
@@ -81,12 +83,15 @@ def build_parser() -> argparse.ArgumentParser:
     info = commands.add_parser("info")
     info.add_argument("--model-dir", type=Path, default=Path("results/clv"))
     info.add_argument("--model", choices=MODELS, help="default: registry final model")
+    info.add_argument("--gross-4w-model", choices=GROSS_MODELS, help="4-week model; default: registry default")
     strategy = commands.add_parser("strategy")
     strategy.add_argument("--features", required=True, type=Path,
                           help="feature_store.parquet or the simulator features directory")
     _inputs(strategy, weekly_required=False)
     strategy.add_argument("--model-dir", type=Path, default=Path("results/clv"))
     strategy.add_argument("--model", choices=MODELS, help="default: registry final model")
+    strategy.add_argument("--gross-4w-model", choices=GROSS_MODELS,
+                          help="4-week model; default: registry default (cross-validated one-standard-error rule)")
     strategy.add_argument("--output", type=Path, default=Path("results/clv_strategy_predictions.parquet"))
     strategy.add_argument("--allow-training-customers", action="store_true",
                           help="development only: accept customers used to fit or select the CLV model")
@@ -117,7 +122,7 @@ def main(argv=None) -> dict:
     if args.command == "info":
         from .inference import CLVModel
 
-        summary = CLVModel(args.model_dir, args.model).info()
+        summary = CLVModel(args.model_dir, args.model, gross_4w_model=args.gross_4w_model).info()
         print(json.dumps(jsonable(summary), ensure_ascii=False, indent=2))
         return summary
     options = _options(args)
@@ -136,7 +141,8 @@ def main(argv=None) -> dict:
                                   overwrite=args.overwrite, require_gross_4w=args.require_gross_4w, **options)
         summary = {key: registry[key] for key in ("reference_week", "population", "dataset", "split_counts",
                                                   "model_status", "final_model", "test_metrics")}
-        summary["gross_4w"] = {key: registry["gross_4w"][key] for key in ("status", "split_counts", "test_metrics")}
+        summary["gross_4w"] = {key: registry["gross_4w"][key] for key in ("model", "status", "split_counts",
+                                                                          "test_metrics", "candidate_status")}
     elif args.command == "evaluate":
         report = pipeline.evaluate(args.weekly, args.ledger, args.model_dir, args.cutoff, args.population,
                                    args.output, **options)
@@ -146,7 +152,8 @@ def main(argv=None) -> dict:
                    "gross_4w": report["gross_4w"]}
     elif args.command == "predict":
         predictions = pipeline.predict(args.weekly, args.ledger, args.model_dir, args.reference_week, args.model,
-                                       customers=_customer_ids(args.customers), **options)
+                                       customers=_customer_ids(args.customers), gross_4w_model=args.gross_4w_model,
+                                       **options)
         path = pipeline.write_predictions(predictions, args.output)
         summary = {"predictions": str(path), "customers": int(len(predictions)),
                    "reference_week": predictions["reference_week"].iloc[0], "model": predictions["model_name"].iloc[0],
@@ -156,7 +163,7 @@ def main(argv=None) -> dict:
     elif args.command == "strategy":
         from .inference import CLVModel
 
-        result = CLVModel(args.model_dir, args.model).predict_for_strategy(
+        result = CLVModel(args.model_dir, args.model, gross_4w_model=args.gross_4w_model).predict_for_strategy(
             args.features, args.weekly, args.ledger, allow_training_customers=args.allow_training_customers,
             require_control_only=args.require_control_only, **options)
         path = result.save(args.output)

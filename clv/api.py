@@ -36,6 +36,7 @@ from .bundle import (
     VALUE_SEMANTICS,
 )
 from .config import POPULATION_POLICIES, CLVConfig, load_config
+from .gross4w import GROSS_CANDIDATES
 from .inference import (
     GROSS_STRATEGY_COLUMNS, STRATEGY_COLUMNS, CLVModel, StrategyPredictions, load_strategy_predictions,
 )
@@ -54,7 +55,7 @@ __all__ = [
     "load_clv_predictions", "write_predictions",
     # 계약 상수
     "PREDICTION_COLUMN", "HIGH_VALUE_COLUMN", "TARGET", "TARGET_DEFINITION_ID", "VALUE_SEMANTICS",
-    "GROSS_PREDICTION_COLUMN", "GROSS_TARGET", "GROSS_TARGET_DEFINITION_ID", "GROSS_NOT_TRAINED",
+    "GROSS_PREDICTION_COLUMN", "GROSS_TARGET", "GROSS_TARGET_DEFINITION_ID", "GROSS_NOT_TRAINED", "GROSS_CANDIDATES",
 ]
 
 
@@ -99,24 +100,26 @@ def run_clv(weekly, ledger=None, output_dir: str | Path = "results/clv",
     return run(weekly, ledger, output_dir, predictions_path, _config(config), cutoff, reference_week, **options)
 
 
-def load_model(model_dir: str | Path = "results/clv", model: str | None = None) -> CLVModel:
-    """번들을 체크섬 대조 후 불러온다. ``model``을 주지 않으면 registry의 최종 모델이다."""
-    return CLVModel(model_dir, model)
+def load_model(model_dir: str | Path = "results/clv", model: str | None = None,
+               gross_4w_model: str | None = None) -> CLVModel:
+    """번들을 체크섬 대조 후 불러온다. ``model``(52주)·``gross_4w_model``(4주)을 주지 않으면 registry의 기본 모델이다."""
+    return CLVModel(model_dir, model, gross_4w_model=gross_4w_model)
 
 
-def model_info(model_dir: str | Path = "results/clv", model: str | None = None) -> dict:
-    """모델 이름·버전, 예측 대상, 코드·학습 데이터 버전, 입력 요구, Test 지표 요약."""
-    return CLVModel(model_dir, model).info()
+def model_info(model_dir: str | Path = "results/clv", model: str | None = None,
+               gross_4w_model: str | None = None) -> dict:
+    """모델 이름·버전, 예측 대상, 코드·학습 데이터 버전, 입력 요구, Test 지표, 4주 후보와 선택 규칙 요약."""
+    return CLVModel(model_dir, model, gross_4w_model=gross_4w_model).info()
 
 
 def predict_clv(weekly, ledger=None, model_dir: str | Path = "results/clv", reference_week=None, model=None,
                 output: str | Path | None = None, customers=None, require_gross_4w: bool = False,
-                **options) -> pd.DataFrame:
+                gross_4w_model: str | None = None, **options) -> pd.DataFrame:
     """52주 CLV와 4주 조건부 총구매액을 같은 행으로 예측한다(``CLVModel.predict``). ``output``을 주면 CSV도 쓴다.
 
     번들에 4주 모델이 없으면 ``predicted_gross_4w_if_purchase``는 결측이다(``require_gross_4w=True``면 오류).
     """
-    predictions = load_model(model_dir, model).predict(weekly, ledger, reference_week=reference_week,
+    predictions = load_model(model_dir, model, gross_4w_model).predict(weekly, ledger, reference_week=reference_week,
                                                        customers=customers, require_gross_4w=require_gross_4w,
                                                        **options)
     if output is not None:
@@ -127,14 +130,15 @@ def predict_clv(weekly, ledger=None, model_dir: str | Path = "results/clv", refe
 def predict_for_strategy(features, weekly=None, ledger=None, model_dir: str | Path = "results/clv", model=None,
                          output: str | Path | None = None, allow_training_customers: bool = False,
                          require_gross_4w: bool = False, require_control_only: bool = False,
-                         **options) -> StrategyPredictions:
+                         gross_4w_model: str | None = None, **options) -> StrategyPredictions:
     """Feature Store의 모든 (고객, 기준 시각)에 대한 전략 모듈 입력 batch(``CLVModel.predict_for_strategy``).
 
     ``output``(``.parquet``)을 주면 frame, ``_metadata.json``, ``_audit.csv``(4주 모델이 있으면 ``_gross_4w.parquet``)도
     쓴다. CLV 학습·모델 선택에 쓴 고객이 있으면 기본으로 오류다(``allow_training_customers``).
     Uplift와 결합할 batch는 ``require_control_only=True``로 만들어 Control-only 번들만 받는다.
+    ``gross_4w_model``로 4주 후보를 고를 수 있다(기본: 번들의 4주 기본 모델).
     """
-    result = load_model(model_dir, model).predict_for_strategy(
+    result = load_model(model_dir, model, gross_4w_model).predict_for_strategy(
         features, weekly, ledger, allow_training_customers=allow_training_customers,
         require_gross_4w=require_gross_4w, require_control_only=require_control_only, **options)
     if output is not None:

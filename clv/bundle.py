@@ -18,9 +18,11 @@ from .schema import GROSS_PREDICTION_COLUMN, GROSS_WEEKS, INPUT_WEEKS, LABEL_WEE
 
 CARD_NAME = "model_card.json"
 # 2: 학습 모집단 정책(``policy_condition``)과 4주 조건부 총구매액 모델(``gross_4w``)을 기록한다.
-BUNDLE_SCHEMA_VERSION = 2
-# 읽을 수 있는 번들 형식. 1은 4주 모델이 없는 기존 번들(배정군 혼합 학습)이다.
-SUPPORTED_BUNDLE_SCHEMAS = (1, 2)
+# 3: 4주 후보 넷(gross_4w.trained_models)과 기본 모델 선택(gross_4w.selection)을 기록한다. 이전 코드가 3을 읽으면
+#    후보를 구분하지 못하므로 거절하도록 번호를 올렸다.
+BUNDLE_SCHEMA_VERSION = 3
+# 읽을 수 있는 번들 형식. 1은 4주 모델이 없는 기존 번들(배정군 혼합 학습), 2는 4주 XGBoost 하나만 있는 번들이다.
+SUPPORTED_BUNDLE_SCHEMAS = (1, 2, 3)
 # 예측 대상 정의 식별자. 정의(구간·금액)가 바뀌면 번호를 올린다.
 TARGET_DEFINITION_ID = "clv_paid_amount_52w_v1"
 # 모든 모델이 음수 예측을 0으로 자르므로 CLV 값은 0 이상의 금액이다.
@@ -37,6 +39,7 @@ TARGET = {
     "value_semantics": VALUE_SEMANTICS,
     "column_name_note": f"{PREDICTION_COLUMN} keeps its historical name; the horizon is 52 weeks",
 }
+# 4주 XGBoost(제곱오차). 형식 2 번들의 유일한 4주 모델이고, 형식 3에서는 후보 중 하나다.
 GROSS_MODEL = "xgboost_gross_4w"
 GROSS_TARGET_DEFINITION_ID = "gross_amount_4w_if_purchase_v1"
 GROSS_TARGET = {
@@ -61,6 +64,10 @@ MODEL_FILES = {
     "xgboost_two_part": ("models/xgboost_two_part/classifier.json", "models/xgboost_two_part/regressor.json",
                          "models/xgboost_two_part/two_part_meta.json"),
     GROSS_MODEL: ("models/xgboost_gross_4w/regressor.json", "models/xgboost_gross_4w/gross_4w_meta.json"),
+    "xgboost_gamma_gross_4w": ("models/xgboost_gamma_gross_4w/regressor.json",
+                               "models/xgboost_gamma_gross_4w/gross_4w_meta.json"),
+    "mean_gross_4w": ("models/mean_gross_4w.json",),
+    "gamma_gamma_gross_4w": ("models/gamma_gamma_gross_4w.json",),
 }
 # 모든 모델이 함께 쓰는 파일
 SHARED_FILES = ("registry.json", "splits.csv")
@@ -114,15 +121,30 @@ def model_version(name: str, checksums: dict) -> str:
 
 
 def gross_status(registry: dict) -> str:
-    """registry의 4주 모델 상태. 이 모델이 생기기 전 번들은 ``not_trained``다."""
+    """registry의 4주 기본 모델 상태. 이 모델이 생기기 전 번들은 ``not_trained``다."""
     return (registry.get("gross_4w") or {}).get("status", GROSS_NOT_TRAINED)
+
+
+def gross_final(registry: dict) -> str | None:
+    """4주 기본 모델 이름. 학습되지 않았으면 None(형식 2 번들은 ``xgboost_gross_4w``)."""
+    if gross_status(registry) != "trained":
+        return None
+    return (registry.get("gross_4w") or {}).get("model", GROSS_MODEL)
+
+
+def gross_models(registry: dict) -> list[str]:
+    """번들에 저장된 4주 후보 이름(형식 2 번들은 기본 모델 하나)."""
+    gross = registry.get("gross_4w") or {}
+    if "trained_models" in gross:
+        return list(gross["trained_models"])
+    return [gross_final(registry)] if gross_final(registry) else []
 
 
 def write_model_card(output_dir: str | Path, registry: dict) -> dict:
     """registry·분할·모델 파일을 모두 쓴 뒤 ``model_card.json``을 만든다."""
     output = Path(output_dir)
     gross = registry.get("gross_4w") or {}
-    versioned = [*registry["trained_models"], *([GROSS_MODEL] if gross_status(registry) == "trained" else [])]
+    versioned = [*registry["trained_models"], *gross_models(registry)]
     files = [*SHARED_FILES, *(path for name in versioned for path in MODEL_FILES[name])]
     checksums = {path: file_sha256(output / path) for path in files}
     provenance, ledger = registry["provenance"], registry.get("ledger") or {}
@@ -156,9 +178,13 @@ def write_model_card(output_dir: str | Path, registry: dict) -> dict:
         # 정답에 학습 실험의 쿠폰 발송(Treatment)이 섞인 값이다.
         "policy_condition": policy,
         "test_metrics": registry["test_metrics"],
-        "gross_4w": {"model": GROSS_MODEL, "status": gross_status(registry), "model_version": versions.get(GROSS_MODEL),
-                     "target": GROSS_TARGET, "policy_condition": policy, "split_counts": gross.get("split_counts"),
-                     "test_metrics": gross.get("test_metrics")},
+        "gross_4w": {"model": gross_final(registry) or gross.get("model", GROSS_MODEL), "status": gross_status(registry),
+                     "model_version": versions.get(gross_final(registry)), "target": GROSS_TARGET,
+                     "policy_condition": policy, "split_counts": gross.get("split_counts"),
+                     "test_metrics": gross.get("test_metrics"),
+                     "candidates": {name: versions[name] for name in gross_models(registry)},
+                     "candidate_status": gross.get("candidate_status"),
+                     "selection_rule": (gross.get("selection") or {}).get("rule")},
         "files_sha256": checksums,
     }
     write_json(output / CARD_NAME, card)

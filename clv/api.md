@@ -180,11 +180,11 @@ top = model.predict(f"{DATA}/features", reference_week="2025-01-06", customers=[
 
 | 함수·클래스 | 용도 | 반환 |
 | --- | --- | --- |
-| `predict_for_strategy(features, weekly=None, ledger=None, model_dir="results/clv", model=None, output=None, allow_training_customers=False, require_gross_4w=False, require_control_only=False)` | 전략 모듈 입력 batch(4주 batch 포함) | `StrategyPredictions` |
+| `predict_for_strategy(features, weekly=None, ledger=None, model_dir="results/clv", model=None, output=None, allow_training_customers=False, require_gross_4w=False, require_control_only=False, gross_4w_model=None)` | 전략 모듈 입력 batch(4주 batch 포함) | `StrategyPredictions` |
 | `load_strategy_predictions(path)` | 저장한 batch를 체크섬 대조 후 읽기 | `StrategyPredictions` |
-| `load_model(model_dir="results/clv", model=None)` | 번들을 체크섬 대조 후 불러오기 | `CLVModel` |
-| `model_info(model_dir, model=None)` | 모델·버전·학습 데이터·Test 지표 요약 | dict |
-| `predict_clv(weekly, ledger=None, model_dir=..., reference_week=None, model=None, output=None, customers=None, require_gross_4w=False)` | 고객별 52주·4주 예측(CSV 선택) | DataFrame |
+| `load_model(model_dir="results/clv", model=None, gross_4w_model=None)` | 번들을 체크섬 대조 후 불러오기 | `CLVModel` |
+| `model_info(model_dir, model=None, gross_4w_model=None)` | 모델·버전·학습 데이터·Test 지표, 4주 후보·선택 규칙 요약 | dict |
+| `predict_clv(weekly, ledger=None, model_dir=..., reference_week=None, model=None, output=None, customers=None, require_gross_4w=False, gross_4w_model=None)` | 고객별 52주·4주 예측(CSV 선택) | DataFrame |
 | `load_clv_predictions(path)` | `results/clv_predictions.csv`를 자료형 맞춰 읽기 | DataFrame |
 | `train_clv`, `evaluate_clv`, `run_clv` | 학습·평가·일괄 실행. 이미 번들이 있는 디렉터리에는 `overwrite=True` 없이 쓰지 않는다. `train_clv(..., require_gross_4w=True)`는 4주 모델이 없으면 저장하지 않는다 | dict |
 
@@ -194,11 +194,16 @@ top = model.predict(f"{DATA}/features", reference_week="2025-01-06", customers=[
 - `weekly`: 생략하면 `features` 디렉터리의 `weekly_panel.parquet`을 쓴다. `features`가 DataFrame이면 필수다.
 - `model`: 생략하면 registry의 최종 모델(현재 `xgboost`)이다. 다른 이름은 `baseline`, `bgnbd_gg`, `xgboost_two_part`이다.
   `bgnbd_gg`만 예측에 `ledger`가 필요하다.
+- `gross_4w_model`: 4주 후보 이름. 생략하면 번들의 4주 기본 모델이다(교차검증 1-표준오차 규칙으로 고름,
+  [model_spec.md](model_spec.md) 3장). 후보는 `mean_gross_4w`, `gamma_gamma_gross_4w`(예측에 `ledger` 필요),
+  `xgboost_gross_4w`, `xgboost_gamma_gross_4w`다(`GROSS_CANDIDATES`). CLI는 `--gross-4w-model`이다.
+  기본이 아닌 후보는 민감도 분석·비교용이다. 전략 결과를 보고 후보를 고르면 평가가 편향되므로 기본 모델을 먼저 쓴다.
 
 `CLVModel`의 주요 속성·메서드는 다음과 같다.
 
 - 속성: `name`, `model_version`, `metadata`, `needs_ledger`, `training_reference_week`, `card`(모델 카드), `registry`,
-  `policy_condition`, `has_gross_4w`, `gross_4w_status`, `gross_4w_version`, `gross_4w_metadata`
+  `policy_condition`, `has_gross_4w`, `gross_4w_status`, `gross_4w_version`, `gross_4w_metadata`,
+  `gross_4w_name`(쓰는 4주 후보), `gross_4w_default`(번들의 4주 기본 모델), `gross_4w_models`(저장된 후보)
 - 메서드: `predict(...)`, `predict_for_strategy(...)`, `info()`, `training_roles(dataset_id, customer_ids)`
 
 ### 거절하는 입력
@@ -216,6 +221,8 @@ top = model.predict(f"{DATA}/features", reference_week="2025-01-06", customers=[
 | 기준 시각 직전 13주에 관측 주가 하나도 없는 고객 | 이력을 지어내지 않음 |
 | `train`·`validation` 고객 포함(기본) | 3장 |
 | `require_gross_4w=True`인데 번들에 4주 모델이 없음 | 4주 값을 지어내지 않음 |
+| `gross_4w_model`이 번들에 없는 이름 | 학습하지 않은 후보를 쓰지 않음 |
+| 4주 후보가 `gamma_gamma_gross_4w`인데 `ledger`가 없음 | 주문 원장 없이 계산할 수 없음(대체값을 만들지 않음) |
 | `require_control_only=True`(CLI `--require-control-only`)인데 번들 정책이 `control_no_coupon`이 아님 | Uplift 결합에 혼합 번들을 쓰지 않음. 기본(False)은 혼합 번들도 추론한다 |
 | 학습 출력 디렉터리에 이미 번들이 있음(`FileExistsError`) | 기존 번들 보호(`overwrite=True`로만 교체) |
 
@@ -242,7 +249,7 @@ top = model.predict(f"{DATA}/features", reference_week="2025-01-06", customers=[
 
 `frame`과 같은 행·같은 순서다. 열은 키 8열, `input_cutoff_at`, `prediction_end_at`(`as_of_at + 4주`),
 `predicted_gross_4w_if_purchase`(float64, 0 이상, 원천 최소 단위)다. 4주 모델이 없는 번들이면 None이다.
-`gross_4w_metadata`는 `model_version`(`clv-<버전>+xgboost_gross_4w.<12자>`), `target_definition_id`
+`gross_4w_metadata`는 `model_version`(`clv-<버전>+<4주 후보>.<12자>`), `target_definition_id`
 (`gross_amount_4w_if_purchase_v1`), `horizon_value`·`horizon_unit`(`4`, `"weeks"`), `value_semantics`(`"nonnegative_amount"`)다.
 
 ### `metadata`
@@ -277,7 +284,7 @@ top = model.predict(f"{DATA}/features", reference_week="2025-01-06", customers=[
 | `snapshots` | 기준 시각별 `input_cutoff_at`, `prediction_end_at`, 고객 수 |
 | `customers`, `history_incomplete_customers` | 인원 |
 | `training_overlap` | 같은 데이터셋 여부, 역할별 인원, 허용 여부 |
-| `gross_4w` | 4주 모델 이름·상태·버전·대상 정의 |
+| `gross_4w` | 쓴 4주 후보 이름(`model_name`), 번들의 기본 후보(`default_model`), 상태·버전·대상 정의 |
 | `warnings`, `created_at` | 경고와 생성 시각 |
 
 `raw_database_sha256_verified_by`에는 파일 해시까지 확인한 출처만 들어간다. 값은 `weekly_manifest`(features manifest)와
@@ -316,7 +323,9 @@ artifacts/population-24m-n20000-seed42/
 
 이 번들은 형식 1이다. 새로 학습한 번들(형식 2)에는 다음이 더 있다.
 
-- `models/xgboost_gross_4w/`: 4주 모델
+- `models/xgboost_gross_4w/`: 4주 모델(형식 2는 이것 하나)
+- 형식 3은 4주 후보 넷을 모두 저장한다: `models/mean_gross_4w.json`, `models/gamma_gamma_gross_4w.json`,
+  `models/xgboost_gross_4w/`, `models/xgboost_gamma_gross_4w/`. 기본 후보와 교차검증 표는 `registry.json`의 `gross_4w`에 있다
 - `splits.csv`: 정책 밖 고객(`unused`)과 배정·정책 대상 열
 - `reports/evaluation.json → gross_4w`: 4주 지표와 배정군 진단
 - `model_card.json → gross_4w`: 4주 모델의 상태·버전·대상·Test 지표
@@ -330,7 +339,7 @@ artifacts/population-24m-n20000-seed42/
 | `model_versions` | 모델별 버전. `clv-<CLV 버전>+<모델>.<registry·splits·모델 파일 체크섬 요약>`이므로 파일이 하나라도 바뀌면 달라진다 |
 | `final_model` | Validation RMSE가 가장 낮은 모델 |
 | `target`, `policy_condition` | 1장 계약. `policy_condition`은 학습 모집단 정책이다 |
-| `gross_4w` | 4주 모델 상태(`trained`, `failed: ...`)와 버전·대상·Test 지표(형식 2만) |
+| `gross_4w` | 4주 기본 모델 이름·상태(`trained`, `failed: ...`)·버전·대상·Test 지표(형식 2부터), 후보별 버전·상태와 선택 규칙(형식 3) |
 | `code` | 학습 당시 CLV 버전, git 커밋, `clv/` 미커밋 변경 여부 |
 | `environment` | Python·numpy·pandas·scipy·xgboost·pyarrow 버전 |
 | `training_data` | 학습 기준시점, `dataset_id`, `raw_database_sha256`, 주간 파일 체크섬, 시뮬레이터 manifest 일부(seed, months, 버전, 설정·코드 체크섬, 실험 시각, 최소 이력 일수 등), 분할 인원 |

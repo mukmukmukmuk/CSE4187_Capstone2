@@ -354,6 +354,9 @@ class TwoPartXGBoostCLV:
 
 
 GROSS_NAME = "xgboost_gross_4w"
+# gamma 손실로 학습한 4주 XGBoost 후보(같은 클래스, 목적함수만 reg:gamma)
+GROSS_GAMMA_NAME = "xgboost_gamma_gross_4w"
+GROSS_XGB_NAMES = (GROSS_NAME, GROSS_GAMMA_NAME)
 # 4주 금액 모델의 최소 학습 구매 고객 수(Train). 검증 분할에도 구매 고객이 2명 이상 있어야 한다.
 MIN_GROSS_BUYERS = 20
 
@@ -373,9 +376,12 @@ class GrossXGBoost4w:
     name = GROSS_NAME
 
     def __init__(self, seed: int = 42, grid: dict | None = None, fixed: dict | None = None,
-                 feature_names=PREDICTOR_FEATURES):
+                 feature_names=PREDICTOR_FEATURES, name: str = GROSS_NAME):
         from .config import DEFAULT_GROSS_4W_GRID, DEFAULT_XGB_FIXED
 
+        if name not in GROSS_XGB_NAMES:
+            raise ValueError(f"4-week XGBoost name must be one of {GROSS_XGB_NAMES}")
+        self.name = name
         self.feature_names = list(feature_names)
         check_predictors(self.feature_names)
         self.seed = int(seed)
@@ -414,11 +420,11 @@ class GrossXGBoost4w:
         y_train, y_validation = np.asarray(y_train, dtype=float), np.asarray(y_validation, dtype=float)
         for name, values in (("train", y_train), ("validation", y_validation)):
             if not (np.isfinite(values).all() and (values >= 0).all()):
-                raise ValueError(f"{GROSS_NAME} {name} labels must be finite nonnegative gross amounts of buyers")
+                raise ValueError(f"{self.name} {name} labels must be finite nonnegative gross amounts of buyers")
         self.train_counts = {"train_buyers": int(len(y_train)), "validation_buyers": int(len(y_validation)),
                              "zero_gross_buyers": int((y_train == 0).sum() + (y_validation == 0).sum())}
         if len(y_train) < MIN_GROSS_BUYERS or len(y_validation) < 2:
-            raise InsufficientBuyersError(f"{GROSS_NAME} needs at least {MIN_GROSS_BUYERS} train buyers and 2 validation buyers "
+            raise InsufficientBuyersError(f"{self.name} needs at least {MIN_GROSS_BUYERS} train buyers and 2 validation buyers "
                              f"(got {len(y_train)} and {len(y_validation)})")
 
         def score(model, trees):
@@ -433,7 +439,7 @@ class GrossXGBoost4w:
             self.skipped_objectives = [value for value in objectives if value == "reg:gamma"]
             grid["objective"] = [value for value in objectives if value != "reg:gamma"]
             if not grid["objective"]:
-                raise ValueError(f"{GROSS_NAME} grid has only reg:gamma but some buyers have zero gross")
+                raise ValueError(f"{self.name} grid has only reg:gamma but some buyers have zero gross")
         self.model, self.best_params, self.grid_results = _search(
             self._make, grid, self.fixed, (X_train, y_train, X_validation, y_validation), score, "rmse")
         return self
@@ -441,7 +447,7 @@ class GrossXGBoost4w:
     def predict(self, frame: pd.DataFrame) -> np.ndarray:
         """구매한다면 기대되는 4주 할인 전 총구매액. 음수 예측은 0으로 자르고 건수를 ``last_clipped``에 남긴다."""
         if self.model is None:
-            raise RuntimeError(f"{GROSS_NAME} model is not fitted")
+            raise RuntimeError(f"{self.name} model is not fitted")
         raw = self.model.predict(self.matrix(frame)).astype(float)
         self.last_clipped = int((raw < 0).sum())
         return np.clip(raw, 0.0, None)
@@ -459,7 +465,7 @@ class GrossXGBoost4w:
         directory.mkdir(parents=True, exist_ok=True)
         self.model.save_model(directory / "regressor.json")
         return write_json(directory / "gross_4w_meta.json", {
-            "model": GROSS_NAME, "feature_names": self.feature_names,
+            "model": self.name, "feature_names": self.feature_names,
             "feature_dtypes": {name: FEATURE_DTYPE for name in self.feature_names}, "seed": self.seed,
             "grid": self.grid, "fixed": self.fixed, "best_params": self.best_params,
             "grid_results": self.grid_results, "train_counts": self.train_counts,
@@ -475,10 +481,10 @@ class GrossXGBoost4w:
 
         directory = Path(directory)
         meta = read_json(directory / "gross_4w_meta.json")
-        if meta.get("model") != GROSS_NAME:
+        if meta.get("model") not in GROSS_XGB_NAMES:
             raise ValueError("not a 4-week gross XGBoost model directory")
         _require_xgboost_version(meta, xgb.__version__)
-        model = cls(meta["seed"], meta["grid"], meta["fixed"], meta["feature_names"])
+        model = cls(meta["seed"], meta["grid"], meta["fixed"], meta["feature_names"], meta["model"])
         model.model = xgb.XGBRegressor()
         model.model.load_model(directory / "regressor.json")
         if list(model.model.get_booster().feature_names or []) != model.feature_names:

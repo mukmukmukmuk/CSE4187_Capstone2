@@ -12,6 +12,7 @@ from clv.api import load_model, load_strategy_predictions, model_info, predict_c
 from clv.bundle import CARD_NAME, MODEL_FILES, TARGET_DEFINITION_ID, file_sha256
 from clv.cli import main
 from clv.config import CLVConfig
+from clv.gross4w import GROSS_CANDIDATES
 from clv.inference import STRATEGY_COLUMNS, CLVModel
 from clv.pipeline import prepare_inputs, train
 
@@ -20,7 +21,8 @@ from .fixtures import synthetic_outputs, write_raw_sqlite
 FAST = {"xgb_grid": {"objective": ["reg:squarederror"], "max_depth": [3], "learning_rate": [0.1]},
         "xgb_fixed": {"n_estimators": 100, "early_stopping_rounds": 10, "n_jobs": 1},
         "two_part_classifier_grid": {"max_depth": [3], "learning_rate": [0.1]},
-        "two_part_regressor_grid": {"objective": ["reg:squarederror"], "max_depth": [3], "learning_rate": [0.1]}}
+        "two_part_regressor_grid": {"objective": ["reg:squarederror"], "max_depth": [3], "learning_rate": [0.1]},
+        "gross_4w_cv_folds": 3, "gross_4w_cv_repeats": 1, "gross_4w_bootstrap": 200}
 # 합성 Fixture의 실험 시점(서울 2024-10-07 월요일 00:00)
 AS_OF = pd.Timestamp("2024-10-06T15:00:00Z")
 
@@ -70,14 +72,16 @@ def test_model_card_records_versions_and_checksums(bundle):
     assert card["target"]["definition_id"] == TARGET_DEFINITION_ID
     # 4주 모델도 같은 방식으로 파일 체크섬과 버전을 남긴다.
     assert registry["gross_4w"]["status"] == "trained"
-    versioned = [*registry["trained_models"], "xgboost_gross_4w"]
+    versioned = [*registry["trained_models"], *registry["gross_4w"]["trained_models"]]
     expected = {"registry.json", "splits.csv", *(path for name in versioned for path in MODEL_FILES[name])}
     assert set(card["files_sha256"]) == expected
     assert all(file_sha256(bundle / path) == digest for path, digest in card["files_sha256"].items())
     assert set(card["model_versions"]) == set(versioned)
     assert re.fullmatch(r"clv-\d+\.\d+\.\d+\+xgboost\.[0-9a-f]{12}", card["model_versions"]["xgboost"])
-    assert card["gross_4w"]["model_version"] == card["model_versions"]["xgboost_gross_4w"]
-    assert card["bundle_schema_version"] == 2 and card["policy_condition"] == "control_no_coupon"
+    assert card["gross_4w"]["model"] == registry["gross_4w"]["model"]
+    assert card["gross_4w"]["model_version"] == card["model_versions"][registry["gross_4w"]["model"]]
+    assert set(card["gross_4w"]["candidates"]) == set(registry["gross_4w"]["trained_models"])
+    assert card["bundle_schema_version"] == 3 and card["policy_condition"] == "control_no_coupon"
     assert card["gross_4w"]["target"]["horizon_value"] == 4
     assert card["training_data"]["dataset_id"] == "synthetic-fixture-seed0"
     assert card["training_data"]["simulator"]["seed"] == 0  # raw manifest에서 옮겨 적은 출처
@@ -264,3 +268,48 @@ def test_same_seed_in_another_dataset_is_flagged(bundle, other_dataset):
     population = _population(other_dataset, ids, dataset_id="synthetic-fixture-seed1")
     result = predict_for_strategy(population, weekly, None, bundle)
     assert any("same simulator seed" in warning for warning in result.producer_metadata["warnings"])
+
+
+def test_four_week_candidates_are_saved_and_the_default_follows_the_one_se_rule(bundle):
+    """4주 후보 넷을 모두 저장하고, 기본 모델은 교차검증 1-표준오차 규칙(단순한 순서 우선)으로 고른다."""
+    gross = json.loads((bundle / "registry.json").read_text())["gross_4w"]
+    assert gross["trained_models"] == list(GROSS_CANDIDATES)  # 원장이 있으면 Gamma-Gamma 후보도 학습한다
+    selection = gross["selection"]
+    assert selection["metric"] == "squared_error" and selection["chosen"] == gross["model"]
+    rows = {row["model"]: row for row in selection["table"]}
+    order = [name for name in GROSS_CANDIDATES if name in rows]
+    chosen = order.index(gross["model"])
+    assert rows[gross["model"]]["within_one_se"] and not any(rows[name]["within_one_se"] for name in order[:chosen])
+    best = min(rows.values(), key=lambda row: row["cv_mse"])
+    assert best["best"] and best["mse_minus_best"] == 0
+    for name in GROSS_CANDIDATES:  # 선택에 쓰지 않은 Test 구매 고객으로 후보마다 지표와 Bootstrap 구간을 남긴다
+        metrics = gross["candidate_test_metrics"][name]
+        assert metrics["n"] == gross["split_counts"]["test"] and len(metrics["mae_ci95"]) == 2
+
+
+def test_strategy_batch_can_use_any_four_week_candidate(bundle, other_dataset):
+    ids = _customers_with_history(other_dataset, bundle)
+    population = _population(other_dataset, ids, dataset_id="synthetic-fixture-seed1")
+    default = json.loads((bundle / "registry.json").read_text())["gross_4w"]["model"]
+    versions = set()
+    for name in GROSS_CANDIDATES:
+        result = predict_for_strategy(population, other_dataset / "features", other_dataset / "dataset", bundle,
+                                      gross_4w_model=name, require_gross_4w=True)
+        assert f"+{name}." in result.gross_4w_metadata["model_version"]
+        assert result.producer_metadata["gross_4w"]["model_name"] == name
+        assert result.producer_metadata["gross_4w"]["default_model"] == default
+        assert result.gross_4w["predicted_gross_4w_if_purchase"].ge(0).all()
+        assert result.frame.equals(predict_for_strategy(population, other_dataset / "features",
+                                                        other_dataset / "dataset", bundle).frame)  # 52주는 그대로
+        versions.add(result.gross_4w_metadata["model_version"])
+    assert len(versions) == len(GROSS_CANDIDATES)
+    assert load_model(bundle).gross_4w_name == default
+    with pytest.raises(ValueError, match="is not in bundle"):
+        load_model(bundle, gross_4w_model="xgboost")
+    # Gamma-Gamma 후보는 주문 원장이 있어야 한다(대체값을 만들지 않는다).
+    with pytest.raises(ValueError, match="gamma_gamma_gross_4w needs the order ledger"):
+        load_model(bundle, gross_4w_model="gamma_gamma_gross_4w").predict(other_dataset / "features",
+                                                                           reference_week=AS_OF)
+    summary = main(["info", "--model-dir", str(bundle), "--gross-4w-model", "xgboost_gamma_gross_4w"])
+    assert summary["gross_4w"]["model_name"] == "xgboost_gamma_gross_4w"
+    assert summary["gross_4w"]["default_model"] == default

@@ -18,11 +18,12 @@ import pandas as pd
 from . import __version__
 from .bundle import (
     GROSS_MODEL, GROSS_NOT_TRAINED, GROSS_TARGET, GROSS_TARGET_DEFINITION_ID, TARGET, TARGET_DEFINITION_ID,
-    VALUE_SEMANTICS, code_version, environment, file_sha256, gross_status, read_model_card,
+    VALUE_SEMANTICS, code_version, environment, file_sha256, gross_final, gross_models, gross_status, read_model_card,
 )
 from .config import CLVConfig
 from .evaluation import ranks, top_flags
 from .features import build_features, to_cutoff
+from .gross4w import GROSS_CANDIDATES, score_gross
 from .io import read_json, write_json
 from .pipeline import _check_units, _models_for, _score as score_model, default_reference_week, prepare_inputs
 from .schema import GROSS_PREDICTION_COLUMN, GROSS_WEEKS, HIGH_VALUE_COLUMN, LABEL_WEEKS, PREDICTION_COLUMN, SEOUL
@@ -204,12 +205,15 @@ class CLVModel:
         model_dir: 번들 디렉터리(``registry.json``, ``model_card.json``, ``models/``, ``splits.csv``).
         model: 52주 모델 이름(``baseline``, ``bgnbd_gg``, ``xgboost``, ``xgboost_two_part``). 기본은 registry 최종 모델.
         verify: False면 체크섬 대조를 건너뛴다(디버깅용).
+        gross_4w_model: 4주 후보 이름(``GROSS_CANDIDATES``). 기본은 registry의 4주 기본 모델(교차검증 1-표준오차 규칙으로
+            고른 후보). 다른 후보는 민감도 분석·비교용이며, 쓴 후보는 4주 batch의 ``model_version``에 남는다.
 
-    번들에 4주 조건부 총구매액 모델(``xgboost_gross_4w``)이 있으면 함께 불러와 같은 고객·같은 t0로 예측한다.
+    번들에 4주 조건부 총구매액 모델이 있으면 함께 불러와 같은 고객·같은 t0로 예측한다.
     없으면(기존 번들) ``has_gross_4w``가 False이고 4주 예측은 결측 + 상태 값으로 표시한다.
     """
 
-    def __init__(self, model_dir: str | Path = "results/clv", model: str | None = None, verify: bool = True):
+    def __init__(self, model_dir: str | Path = "results/clv", model: str | None = None, verify: bool = True,
+                 gross_4w_model: str | None = None):
         self.model_dir = Path(model_dir)
         self.card = read_model_card(self.model_dir, verify=verify)
         self.registry = read_json(self.model_dir / "registry.json")
@@ -219,10 +223,16 @@ class CLVModel:
         self.config = CLVConfig.from_registry(self.registry["config"])
         self.model_version = self.card["model_versions"][self.name]
         self._model = _models_for(self.model_dir, [self.name])[self.name]
-        # 4주 모델 상태: trained면 불러오고, 기존 번들(이 모델 이전)은 not_trained다.
+        # 4주 모델 상태: 기본 모델이 trained면 고른 후보를 불러오고, 기존 번들(이 모델 이전)은 not_trained다.
         self.gross_4w_status = gross_status(self.registry)
-        self.gross_4w_version = self.card["model_versions"].get(GROSS_MODEL)
-        self._gross = (_models_for(self.model_dir, [GROSS_MODEL])[GROSS_MODEL] if self.gross_4w_status == "trained"
+        self.gross_4w_models = gross_models(self.registry)
+        if gross_4w_model is not None and gross_4w_model not in self.gross_4w_models:
+            raise ValueError(f"4-week model {gross_4w_model!r} is not in bundle {self.model_dir} (trained: "
+                             f"{self.gross_4w_models or 'none'}; candidates are {GROSS_CANDIDATES})")
+        self.gross_4w_default = gross_final(self.registry)
+        self.gross_4w_name = gross_4w_model or self.gross_4w_default
+        self.gross_4w_version = self.card["model_versions"].get(self.gross_4w_name) if self.gross_4w_name else None
+        self._gross = (_models_for(self.model_dir, [self.gross_4w_name])[self.gross_4w_name] if self.gross_4w_name
                        else None)
 
     @property
@@ -246,13 +256,13 @@ class CLVModel:
     def _require_gross(self) -> None:
         """4주 모델이 없으면 ValueError(대체값을 만들지 않는다)."""
         if not self.has_gross_4w:
-            raise ValueError(f"bundle {self.model_dir} has no trained {GROSS_MODEL} (status: {self.gross_4w_status}); "
+            raise ValueError(f"bundle {self.model_dir} has no trained 4-week model (status: {self.gross_4w_status}); "
                              "retrain with this clv version to get predicted_gross_4w_if_purchase")
 
     @property
     def needs_ledger(self) -> bool:
-        """BG/NBD + Gamma-Gamma만 예측에 주문 원장(``raw.sqlite``)이 필요하다."""
-        return self.name == "bgnbd_gg"
+        """52주 BG/NBD + Gamma-Gamma와 4주 ``gamma_gamma_gross_4w``만 예측에 주문 원장(``raw.sqlite``)이 필요하다."""
+        return self.name == "bgnbd_gg" or bool(getattr(self._gross, "needs_ledger", False))
 
     @property
     def training_reference_week(self) -> pd.Timestamp:
@@ -272,16 +282,22 @@ class CLVModel:
                 "training_data": self.card["training_data"], "policy_condition": self.card["policy_condition"],
                 "needs_ledger": self.needs_ledger, "predictors": self.card["predictors"],
                 "test_metrics": self.registry["test_metrics"].get(self.name),
-                "gross_4w": {"model_name": GROSS_MODEL, "status": self.gross_4w_status,
+                "gross_4w": {"model_name": self.gross_4w_name, "default_model": self.gross_4w_default,
+                             "candidates": self.gross_4w_models, "status": self.gross_4w_status,
                              "model_version": self.gross_4w_version, "target": GROSS_TARGET,
-                             "test_metrics": (self.registry.get("gross_4w") or {}).get("test_metrics")}}
+                             "selection": (self.registry.get("gross_4w") or {}).get("selection"),
+                             "test_metrics": ((self.registry.get("gross_4w") or {}).get("candidate_test_metrics") or {})
+                             .get(self.gross_4w_name, (self.registry.get("gross_4w") or {}).get("test_metrics"))}}
 
     def _inputs(self, weekly, ledger, strict, input_options):
         """입력을 변환·검증하고 학습 때와 통화·단위가 같은지 확인한다."""
         panel, orders, _ = prepare_inputs(weekly, ledger, strict=strict, **input_options)
         _check_units(panel, self.registry)
         if self.needs_ledger and orders is None:
-            raise ValueError("bgnbd_gg needs the order ledger (raw.sqlite)")
+            if self.name == "bgnbd_gg":
+                raise ValueError("bgnbd_gg needs the order ledger (raw.sqlite)")
+            raise ValueError(f"4-week model {self.gross_4w_name} needs the order ledger (raw.sqlite); pass ledger or "
+                             "choose another gross_4w_model")
         return panel, orders
 
     def _scored(self, panel, orders, t0, customers=None) -> pd.DataFrame:
@@ -307,10 +323,7 @@ class CLVModel:
         scored[PREDICTION_COLUMN] = values
         # 4주 조건부 총구매액: 같은 예측 변수(같은 고객·같은 t0)로 예측한다. 모델이 없으면 결측으로 둔다.
         if self.has_gross_4w:
-            gross = self._gross.predict(features)
-            if not (np.isfinite(gross).all() and (gross >= 0).all()):
-                raise ValueError("4-week gross predictions must be finite and nonnegative")
-            scored[GROSS_PREDICTION_COLUMN] = gross
+            scored[GROSS_PREDICTION_COLUMN] = score_gross(self._gross, features, orders, t0)
         else:
             scored[GROSS_PREDICTION_COLUMN] = np.nan
         # 두 파트 모델이면 구매 확률과 구매 시 기대 결제액도 붙인다.
@@ -382,7 +395,8 @@ class CLVModel:
         if trained != __version__:
             warnings.append(f"bundle was trained with clv {trained}, inference runs clv {__version__}")
         library = self.card["environment"].get("xgboost")
-        if (self.name.startswith("xgboost") or self.has_gross_4w) and library != environment()["xgboost"]:
+        uses_xgboost = self.name.startswith("xgboost") or (self.gross_4w_name or "").startswith("xgboost")
+        if uses_xgboost and library != environment()["xgboost"]:
             warnings.append(f"bundle was trained with xgboost {library}, inference runs xgboost {environment()['xgboost']}")
         if not self.same_dataset(dataset_id):
             source = orders.attrs.get("source_metadata") if orders is not None else None
@@ -496,7 +510,7 @@ class CLVModel:
             gross["prediction_end_at"] = (gross["as_of_at"] + GROSS_HORIZON).astype(UTC_TIME)
             gross[GROSS_PREDICTION_COLUMN] = gross[GROSS_PREDICTION_COLUMN].astype("float64")
         else:
-            warnings.append(f"bundle has no trained {GROSS_MODEL} (status: {self.gross_4w_status}); "
+            warnings.append(f"bundle has no trained 4-week model (status: {self.gross_4w_status}); "
                             "predicted_gross_4w_if_purchase is not provided")
         extra = [name for name in ("purchase_probability_52w", "expected_amount_if_purchase") if name in joined]
         audit = joined.loc[:, [*JOIN_KEYS, "history_complete", "history_weeks_13w", "clv_training_role", *extra]]
@@ -519,8 +533,8 @@ class CLVModel:
             "history_incomplete_customers": int((~audit["history_complete"].astype(bool)).sum()),
             "training_overlap": {"same_dataset": self.same_dataset(dataset_id), "roles": roles,
                                  "allowed": bool(allow_training_customers)},
-            "gross_4w": {"model_name": GROSS_MODEL, "status": self.gross_4w_status,
-                         "model_version": self.gross_4w_version, "target": GROSS_TARGET},
+            "gross_4w": {"model_name": self.gross_4w_name, "default_model": self.gross_4w_default,
+                         "status": self.gross_4w_status, "model_version": self.gross_4w_version, "target": GROSS_TARGET},
             "warnings": warnings, "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         }
         return StrategyPredictions(frame, self.metadata, audit, producer, gross, self.gross_4w_metadata,

@@ -7,7 +7,8 @@
     splits.csv               customer_id -> train/validation/test/unused, 배정, 정책 대상·이력 완전·학습 대상 여부
     models/                  baseline.json, bgnbd_gg.json, xgboost/{xgboost_model,xgboost_meta}.json,
                              xgboost_two_part/{classifier,regressor,two_part_meta}.json,
-                             xgboost_gross_4w/{regressor,gross_4w_meta}.json
+                             4주 후보: mean_gross_4w.json, gamma_gamma_gross_4w.json,
+                             xgboost_gross_4w/, xgboost_gamma_gross_4w/{regressor,gross_4w_meta}.json
     reports/                 입력 검증, 적격 기준시점, 평가(이력 구간별·4주 모델·배정군 진단 포함), 10분위, Top-N,
                              BG/NBD 벌점 민감도, 정답 포함 예측(52주, 4주)
 
@@ -25,7 +26,7 @@ import pandas as pd
 from . import __version__
 from .adapter import adapt_orders, adapt_weekly, load_orders, load_weekly
 from .baseline import BaselineModel
-from .bundle import CARD_NAME, GROSS_MODEL, GROSS_TARGET_DEFINITION_ID, gross_status, write_model_card
+from .bundle import CARD_NAME, GROSS_TARGET_DEFINITION_ID, gross_final, gross_models, gross_status, write_model_card
 from .config import CLVConfig
 from .dataset import SPLITS, build_dataset, complete_grid, find_eligible_cutoffs, labeled_rows, select_cutoff, split_customers
 from .evaluation import (
@@ -33,6 +34,11 @@ from .evaluation import (
     top_n_table,
 )
 from .features import WEEK, fully_observed, to_cutoff
+from .gross4w import (
+    GG_GROSS, GROSS_CANDIDATES, SELECTION_RULE, XGB_GAMMA_GROSS, XGB_OBJECTIVES, GammaGammaGross4w,
+    bootstrap_metrics, cross_validated_losses, fit_candidate, load_gross_model, save_gross_model, score_gross,
+    select_one_standard_error,
+)
 from .io import read_json, write_json
 from .population import policy_mask, population_counts
 from .probabilistic import MAX_NUMERICAL_FAILURE_SHARE, ProbabilisticCLV
@@ -42,7 +48,7 @@ from .schema import (
 )
 from .validation import reconcile_orders_with_weekly, validate_orders, validate_weekly
 from .xgboost_model import (
-    GrossXGBoost4w, InsufficientBuyersError, TwoPartXGBoostCLV, XGBoostCLV, classification_metrics, xgboost_status,
+    MIN_GROSS_BUYERS, InsufficientBuyersError, TwoPartXGBoostCLV, XGBoostCLV, classification_metrics, xgboost_status,
 )
 
 MODEL_NAMES = ("baseline", "bgnbd_gg", "xgboost", "xgboost_two_part")
@@ -129,12 +135,12 @@ def default_reference_week(panel: pd.DataFrame) -> pd.Timestamp:
 
 
 def _models_for(model_dir: Path, names) -> dict:
-    """``model_dir/models``에 저장된 모델을 이름별로 불러온다(4주 모델 ``xgboost_gross_4w`` 포함)."""
+    """``model_dir/models``에 저장된 모델을 이름별로 불러온다(4주 후보 ``GROSS_CANDIDATES`` 포함)."""
     loaded = {}
     for name in names:
-        if name == GROSS_MODEL:
-            loaded[name] = GrossXGBoost4w.load(model_dir / "models" / GROSS_MODEL)
-        if name == "baseline":
+        if name in GROSS_CANDIDATES:
+            loaded[name] = load_gross_model(Path(model_dir) / "models", name)
+        elif name == "baseline":
             loaded[name] = BaselineModel.load(model_dir / "models")
         elif name == "bgnbd_gg":
             loaded[name] = ProbabilisticCLV.load(model_dir / "models")
@@ -274,6 +280,23 @@ def _gross_report(scored: pd.DataFrame, splits, t0, experiment) -> dict:
     return report
 
 
+def _gross_candidate_metrics(scored: pd.DataFrame, split: str, names, config: CLVConfig) -> dict:
+    """``split``의 학습 대상 구매 고객으로 4주 후보마다 지표와 고객 단위 Bootstrap 95% 구간을 만든다."""
+    rows = scored.loc[scored["training_population"].astype(bool) & scored["split"].eq(split)
+                      & scored[GROSS_LABEL_COLUMN].notna()]
+    result = {}
+    for name in names:
+        column = f"pred_{name}"
+        if column not in rows or rows.empty:
+            continue
+        metrics = regression_metrics(rows[GROSS_LABEL_COLUMN], rows[column])
+        result[name] = {**{key: metrics.get(key) for key in ("n", "mae", "rmse", "bias", "mean_actual",
+                                                             "mean_predicted", "spearman")},
+                        **bootstrap_metrics(rows[GROSS_LABEL_COLUMN], rows[column], config.gross_4w_bootstrap,
+                                            config.seed)}
+    return result
+
+
 def _experiment_cutoff(panel: pd.DataFrame):
     """패널의 실험 시각 ``as_of_at``이 하나이고 서울 월요일 00:00이면 그 t0, 아니면 None."""
     if "as_of_at" not in panel:
@@ -292,7 +315,7 @@ def train(weekly, orders=None, output_dir: str | Path = "results/clv", config: C
 
     학습 모집단 정책(``config.population_policy``, 기본 ``control_no_coupon``)을 고객 분할 전에 적용한다.
     정책 대상 고객만 Train/Validation/Test로 나누고 나머지(Treatment 등)는 ``unused``로 두므로, 52주 모델과
-    4주 모델이 같은 모집단·같은 고객 단위 분할을 쓴다. 4주 모델(``xgboost_gross_4w``)은 그중 4주 관측이
+    4주 모델이 같은 모집단·같은 고객 단위 분할을 쓴다. 4주 후보 넷(``gross4w``)은 그중 4주 관측이
     완전하고 4주 안에 구매한 고객만으로 학습하며, 52주 모델의 최종 모델 선택에는 들어가지 않는다.
     이미 번들이 있는 ``output_dir``에는 ``overwrite=True`` 없이 쓰지 않는다.
 
@@ -413,34 +436,95 @@ def train(weekly, orders=None, output_dir: str | Path = "results/clv", config: C
             # 구매 고객이 너무 적으면 실행을 멈추지 않고 failed로 기록한다.
             status["xgboost_two_part"] = f"failed: {error}"
 
-    # 4주 조건부 총구매액 모델: 같은 t0·같은 분할에서, 학습 대상(정책 대상) 중 4주 안에 구매한 고객만 학습한다.
+    # 4주 조건부 총구매액 후보 넷: 같은 t0·같은 분할에서, 학습 대상(정책 대상) 중 4주 안에 구매한 고객만 학습한다.
     # 52주 모델의 정답이나 금액 파트를 쓰지 않는다. 예측과 진단은 4주 관측이 완전한 모든 고객에 대해 만든다.
     gross_scored = _gross_frame(frame)
     gross_buyers = gross_scored.loc[gross_scored["training_population"] & gross_scored[GROSS_LABEL_COLUMN].notna()
                                     & gross_scored["split"].isin(SPLITS)]
     gross_parts = {name: gross_buyers.loc[gross_buyers["split"].eq(name)] for name in SPLITS}
-    gross_model, gross_details = None, {}
     gross_scored["out_of_sample"] = ~gross_scored["split"].isin(FITTED_SPLITS)
+    gross_trained, gross_states, gross_details, selection, value_model = {}, {}, {}, None, None
     if config.population_policy != "control_no_coupon":
-        gross_state = "skipped: the 4-week model is defined for population_policy control_no_coupon"
-    elif not available:
-        gross_state = f"skipped: {version}"
+        gross_states = dict.fromkeys(GROSS_CANDIDATES,
+                                     "skipped: the 4-week model is defined for population_policy control_no_coupon")
+    elif len(gross_parts["train"]) < MIN_GROSS_BUYERS or len(gross_parts["validation"]) < 2:
+        # 구매 고객이 너무 적을 때만 실행을 멈추지 않고 failed로 기록한다(52주 모델은 그대로 저장한다).
+        gross_states = dict.fromkeys(GROSS_CANDIDATES, (
+            f"failed: 4-week models need at least {MIN_GROSS_BUYERS} train buyers and 2 validation buyers "
+            f"(got {len(gross_parts['train'])} and {len(gross_parts['validation'])})"))
     else:
-        try:
-            gross_model = GrossXGBoost4w(config.seed, config.gross_4w_grid, config.xgb_fixed).fit(
-                gross_parts["train"], gross_parts["train"][GROSS_LABEL_COLUMN],
-                gross_parts["validation"], gross_parts["validation"][GROSS_LABEL_COLUMN])
-            gross_scored[GROSS_PREDICTION_COLUMN] = gross_model.predict(gross_scored)
-            gross_state, gross_details = "trained", {"version": version, **gross_model.summary(),
-                                                      "clipped_negative_predictions": gross_model.last_clipped}
-        except InsufficientBuyersError as error:
-            # 구매 고객이 너무 적을 때만 실행을 멈추지 않고 failed로 기록한다(52주 모델은 그대로 저장한다).
-            gross_state = f"failed: {error}"
-    if require_gross_4w and gross_model is None:
-        raise ValueError(f"require_gross_4w: {GROSS_MODEL} was not trained ({gross_state}); nothing was saved")
-    gross_evaluation = (_gross_report(gross_scored, ("validation", "test"), t0, experiment) if gross_model is not None
+        if orders is None:
+            gross_states[GG_GROSS] = "skipped: no order ledger supplied"
+        else:
+            try:
+                # Gamma-Gamma 모수는 정답 없이 Train 분할 고객의 t0 이전 거래로 적합한다(교차검증의 겹마다 같다).
+                train_ids = frame.loc[frame["split"].eq("train") & frame["training_population"], "customer_id"]
+                value_model = GammaGammaGross4w(config.calibration, config.transaction_period,
+                                                config.gg_penalizer).fit_value_model(orders, t0, train_ids)
+            except ValueError as error:
+                gross_states[GG_GROSS] = f"failed: {error}"
+        for name in GROSS_CANDIDATES:
+            if name in gross_states:
+                continue
+            if name in XGB_OBJECTIVES and not available:
+                gross_states[name] = f"skipped: {version}"
+                continue
+            try:
+                model = fit_candidate(name, config, gross_parts["train"], gross_parts["validation"],
+                                      GROSS_LABEL_COLUMN, orders, t0, value_model)
+            except InsufficientBuyersError as error:
+                gross_states[name] = f"failed: {error}"
+                continue
+            except ValueError as error:
+                # gamma 손실은 금액이 0인 구매 고객을 다룰 수 없고, Gamma-Gamma는 금액이 양수여야 한다.
+                if name == XGB_GAMMA_GROSS and "zero gross" in str(error):
+                    gross_states[name] = "skipped: reg:gamma needs positive amounts and some buyers have zero gross"
+                    continue
+                if name == GG_GROSS:
+                    gross_states[name] = f"failed: {error}"
+                    continue
+                raise
+            gross_scored[f"pred_{name}"] = score_gross(model, gross_scored, orders, t0)
+            gross_trained[name], gross_states[name] = model, "trained"
+            gross_details[name] = model.summary()
+            if name in XGB_OBJECTIVES:
+                gross_details[name].update(version=version, clipped_negative_predictions=model.last_clipped)
+    gross_name = None
+    if gross_trained:
+        if config.gross_4w_final_model == "auto":
+            # 기본 모델: Test를 뺀 Train + Validation 구매 고객의 반복 K겹 교차검증 제곱오차와 1-표준오차 규칙.
+            pool = pd.concat([gross_parts["train"], gross_parts["validation"]]).reset_index(drop=True)
+            losses, cv_means, cv_failures = cross_validated_losses(list(gross_trained), config, pool,
+                                                                   GROSS_LABEL_COLUMN, orders, t0, value_model)
+            gross_name, table = select_one_standard_error(losses)
+            for row in table:
+                row["cv_mean_predicted"] = cv_means[row["model"]]
+            selection = {"rule": SELECTION_RULE, "metric": "squared_error", "folds": config.gross_4w_cv_folds,
+                         "repeats": config.gross_4w_cv_repeats, "customers": int(len(pool)),
+                         "mean_actual": float(pool[GROSS_LABEL_COLUMN].mean()), "candidate_order": list(GROSS_CANDIDATES),
+                         "table": table, "excluded": cv_failures, "chosen": gross_name}
+        elif config.gross_4w_final_model in gross_trained:
+            gross_name = config.gross_4w_final_model
+            selection = {"rule": "configured", "chosen": gross_name}
+        else:
+            raise ValueError(f"gross_4w_final_model {config.gross_4w_final_model} was not trained: "
+                             f"{gross_states.get(config.gross_4w_final_model)}")
+        gross_scored[GROSS_PREDICTION_COLUMN] = gross_scored[f"pred_{gross_name}"]
+        gross_state = "trained"
+    else:
+        gross_state = "; ".join(dict.fromkeys(gross_states.values())) or "failed: no 4-week candidate was trained"
+        if not gross_state.startswith(("skipped", "failed")):
+            gross_state = f"failed: {gross_state}"
+    if require_gross_4w and gross_name is None:
+        raise ValueError(f"require_gross_4w: no 4-week model was trained ({gross_state}); nothing was saved")
+    gross_evaluation = (_gross_report(gross_scored, ("validation", "test"), t0, experiment) if gross_name is not None
                         else {"status": gross_state,
                               "assignment_diagnostic": _assignment_diagnostic(gross_scored, t0, experiment)})
+    candidate_test = {}
+    if gross_name is not None:
+        gross_evaluation["model"] = gross_name
+        candidate_test = _gross_candidate_metrics(gross_scored, "test", list(gross_trained), config)
+        gross_evaluation["candidates_test"] = candidate_test
     if experiment is None and config.population_policy == "control_no_coupon" and "as_of_at" in panel:
         model_warnings.append("as_of_at is not a single Asia/Seoul Monday 00:00; t0 was not aligned to the experiment "
                               "and the 4-week window may not match the coupon window")
@@ -474,8 +558,8 @@ def train(weekly, orders=None, output_dir: str | Path = "results/clv", config: C
     model_dir = output / "models"
     for name, model in models.items():
         model.save(model_dir / name if name in SUBDIRECTORY_MODELS else model_dir)
-    if gross_model is not None:
-        gross_model.save(model_dir / GROSS_MODEL)
+    for model in gross_trained.values():
+        save_gross_model(model, model_dir)
     reports_dir = output / "reports"
     write_json(reports_dir / "validation.json", {report.name: report.to_dict() for report in reports})
     cutoffs.assign(reference_week=cutoffs["reference_week"].map(lambda value: value.isoformat())).to_csv(
@@ -517,13 +601,15 @@ def train(weekly, orders=None, output_dir: str | Path = "results/clv", config: C
                          for name in trained},
         "test_metrics_by_history": by_history_test,
         "gross_4w": {
-            "model": GROSS_MODEL, "status": gross_state, "target_definition_id": GROSS_TARGET_DEFINITION_ID,
+            "model": gross_name, "status": gross_state, "target_definition_id": GROSS_TARGET_DEFINITION_ID,
             "training_population": f"{config.population_policy} customers with a complete {GROSS_WEEKS}-week window "
                                    f"and at least one purchase in it",
-            "split_counts": _split_counts(gross_buyers), "details": gross_details,
+            "split_counts": _split_counts(gross_buyers), "details": gross_details.get(gross_name, {}),
             "test_metrics": ({key: gross_evaluation["test"].get(key) for key in
-                              ("n", "mae", "rmse", "mean_actual", "mean_predicted")} if gross_model is not None
+                              ("n", "mae", "rmse", "mean_actual", "mean_predicted")} if gross_name is not None
                              else None),
+            "trained_models": list(gross_trained), "candidate_status": gross_states,
+            "candidate_details": gross_details, "candidate_test_metrics": candidate_test, "selection": selection,
         },
         "warnings": [warning for report in reports for warning in report.warnings] + model_warnings,
     }
@@ -596,7 +682,8 @@ def evaluate(weekly, orders=None, model_dir: str | Path = "results/clv", cutoff=
     # 4주 모델: 번들에 있으면 같은 t0의 4주 관측 완전 고객 전원에게 적용한다. MAE·RMSE는 평가 대상의 학습 대상
     # 구매 고객(Control)으로, 배정군 진단은 평가 대상과 무관하게 이 t0의 전원(Treatment 포함)으로 만든다.
     # 번들에 없으면 상태만 기록한다(대체값을 만들지 않는다).
-    if gross_status(registry) == "trained":
+    final_gross = gross_final(registry)
+    if final_gross is not None:
         gross = _gross_frame(customers)
         # 학습 데이터셋이면 저장된 train·validation 고객을 진단의 예측 요약에서 뺀다(다른 데이터셋이면 전원 미사용).
         fitted = pd.Index([])
@@ -604,10 +691,20 @@ def evaluate(weekly, orders=None, model_dir: str | Path = "results/clv", cutoff=
             splits = pd.read_csv(model_dir / "splits.csv", dtype={"customer_id": str})
             fitted = pd.Index(splits.loc[splits["split"].isin(FITTED_SPLITS), "customer_id"])
         gross["out_of_sample"] = ~gross["customer_id"].isin(fitted)
-        gross[GROSS_PREDICTION_COLUMN] = _models_for(model_dir, [GROSS_MODEL])[GROSS_MODEL].predict(
-            customers.loc[customers[GROSS_COMPLETE_COLUMN].astype(bool)].reset_index(drop=True))
-        report["gross_4w"] = {"status": "trained",
-                              **_gross_report(gross, (population,), t0, _experiment_cutoff(panel))}
+        complete = customers.loc[customers[GROSS_COMPLETE_COLUMN].astype(bool)].reset_index(drop=True)
+        skipped = {}
+        for name, model in _models_for(model_dir, gross_models(registry)).items():
+            if getattr(model, "needs_ledger", False) and orders is None:
+                skipped[name] = "skipped: no order ledger supplied"
+                continue
+            gross[f"pred_{name}"] = score_gross(model, complete, orders, t0)
+        if f"pred_{final_gross}" not in gross:
+            raise ValueError(f"the default 4-week model {final_gross} needs the order ledger (raw.sqlite)")
+        gross[GROSS_PREDICTION_COLUMN] = gross[f"pred_{final_gross}"]
+        report["gross_4w"] = {"status": "trained", "model": final_gross,
+                              **_gross_report(gross, (population,), t0, _experiment_cutoff(panel)),
+                              "candidates": _gross_candidate_metrics(gross, population, gross_models(registry), config),
+                              "candidates_skipped": skipped}
         # population="all"을 학습 데이터셋에 쓰면 적합·선택에 쓴 구매 고객도 지표에 들어간다(인원을 남긴다).
         buyers = gross["split"].eq(population) & gross["training_population"] & gross[GROSS_LABEL_COLUMN].notna()
         report["gross_4w"]["in_sample_buyers"] = int((buyers & ~gross["out_of_sample"]).sum())
@@ -619,14 +716,15 @@ def evaluate(weekly, orders=None, model_dir: str | Path = "results/clv", cutoff=
 
 
 def predict(weekly, orders=None, model_dir: str | Path = "results/clv", reference_week=None, model: str | None = None,
-            strict: bool = True, customers=None, **input_options) -> pd.DataFrame:
-    """``reference_week`` 이전 이력이 있는 고객의 52주 CLV를 예측한다(``CLVModel.predict``와 같다).
+            strict: bool = True, customers=None, gross_4w_model: str | None = None, **input_options) -> pd.DataFrame:
+    """``reference_week`` 이전 이력이 있는 고객의 52주 CLV와 4주 값을 예측한다(``CLVModel.predict``와 같다).
 
     정답은 필요 없다. 13주 이력이 일부만 있는 고객도 예측하되 ``history_complete=False``로 표시한다.
     """
     from .inference import CLVModel  # inference가 pipeline을 import하므로 여기서 불러온다.
 
-    return CLVModel(model_dir, model).predict(weekly, orders, reference_week=reference_week, customers=customers,
+    return CLVModel(model_dir, model, gross_4w_model=gross_4w_model).predict(
+        weekly, orders, reference_week=reference_week, customers=customers,
                                               strict=strict, **input_options)
 
 

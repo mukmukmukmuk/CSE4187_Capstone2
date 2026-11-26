@@ -17,6 +17,7 @@ from clv.config import CLVConfig
 from clv.dataset import build_dataset, build_gross_labels, complete_grid
 from clv.pipeline import evaluate, train
 from clv.population import policy_mask
+from clv.gross4w import GROSS_CANDIDATES
 from clv.xgboost_model import GrossXGBoost4w
 
 from .conftest import clv_rows
@@ -241,7 +242,7 @@ def test_existing_bundle_still_predicts_and_reports_no_four_week_model(outputs, 
         # 4주 값은 0이나 52주 값으로 채우지 않고 결측 + 상태로 표시한다.
         assert predictions["predicted_gross_4w_if_purchase"].isna().all()
         assert predictions["gross_4w_status"].eq("not_trained").all()
-    with pytest.raises(ValueError, match="no trained xgboost_gross_4w"):
+    with pytest.raises(ValueError, match="no trained 4-week model"):
         load_model(HANDOFF_BUNDLE).predict(weekly, reference_week="2024-10-07", require_gross_4w=True)
 
 
@@ -271,7 +272,7 @@ def test_existing_bundle_strategy_batch_has_no_four_week_batch(outputs, tmp_path
     result = model.predict_for_strategy(population, weekly)
     assert list(result.frame.columns) == list(STRATEGY_COLUMNS)
     assert result.gross_4w is None and result.gross_4w_metadata is None and result.gross_4w_status == "not_trained"
-    assert any("xgboost_gross_4w" in warning for warning in result.producer_metadata["warnings"])
+    assert any("no trained 4-week model" in warning for warning in result.producer_metadata["warnings"])
     assert result.producer_metadata["policy_condition"] == "observed_experiment_mix"
     # Uplift 결합용 검증을 켜면 혼합 번들은 거절한다(끄면 위처럼 그대로 추론한다).
     with pytest.raises(ValueError, match="require_control_only: .* not 'control_no_coupon'"):
@@ -391,16 +392,19 @@ def test_four_week_model_needs_control_only_policy_and_surfaces_errors(experimen
                                                                               "observed_experiment_mix"}), cutoff=T0)
     assert mixed["gross_4w"]["status"].startswith("skipped: the 4-week model is defined for")
     assert not (tmp_path / "mix" / "models" / "xgboost_gross_4w").exists()
+    assert not (tmp_path / "mix" / "models" / "mean_gross_4w.json").exists() and mixed["gross_4w"]["trained_models"] == []
     card = json.loads((tmp_path / "mix" / "model_card.json").read_text())
     assert card["policy_condition"] == "observed_experiment_mix" and card["gross_4w"]["model_version"] is None
     # 구매 고객 부족만 failed로 남기고, 그 밖의 오류는 그대로 낸다. require_gross_4w면 부족해도 저장하지 않고 멈춘다.
-    from clv import xgboost_model
-    monkeypatch.setattr(xgboost_model, "MIN_GROSS_BUYERS", 10_000)
+    from clv import pipeline
+    monkeypatch.setattr(pipeline, "MIN_GROSS_BUYERS", 10_000)
     few = train(experiment, None, tmp_path / "few", CLVConfig.from_dict(FAST), cutoff=T0)
-    assert few["gross_4w"]["status"].startswith("failed: xgboost_gross_4w needs at least")
+    assert few["gross_4w"]["status"].startswith("failed: 4-week models need at least")
+    assert few["gross_4w"]["model"] is None and set(few["gross_4w"]["candidate_status"]) == set(GROSS_CANDIDATES)
     with pytest.raises(ValueError, match="require_gross_4w"):
         train(experiment, None, tmp_path / "required", CLVConfig.from_dict(FAST), cutoff=T0, require_gross_4w=True)
     assert not (tmp_path / "required").exists()
+    monkeypatch.undo()
     monkeypatch.setattr(GrossXGBoost4w, "fit", lambda *args, **kwargs: (_ for _ in ()).throw(ValueError("boom")))
     with pytest.raises(ValueError, match="boom"):
         train(experiment, None, tmp_path / "broken", CLVConfig.from_dict(FAST), cutoff=T0)

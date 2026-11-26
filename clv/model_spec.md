@@ -28,7 +28,7 @@ CLV 예측 기간은 팀 합의로 **52주(364일)**로 통일했다. 공식 요
 | 금액 기준 | 할인 후 실결제액 | 할인 전 총구매액 |
 | 의미 | 쿠폰을 보내지 않았을 때의 장기 고객가치 | 쿠폰을 보내지 않았을 때, 구매한다면 기대되는 단기 구매 규모 |
 | 대상 정의 ID | `clv_paid_amount_52w_v1` | `gross_amount_4w_if_purchase_v1` |
-| 모델 | Baseline, BG/NBD + Gamma-Gamma, XGBoost, 두 파트 XGBoost 중 Validation RMSE 최소 | XGBoost 회귀 `xgboost_gross_4w` 하나 |
+| 모델 | Baseline, BG/NBD + Gamma-Gamma, XGBoost, 두 파트 XGBoost 중 Validation RMSE 최소 | 후보 넷을 모두 저장하고 교차검증 1-표준오차 규칙으로 기본 모델을 고른다(아래) |
 
 두 모델은 같은 `customer_id`와 같은 `t0`를 쓴다. 추론은 같은 13주 예측 변수 행 하나에서 두 값을 함께 계산한다.
 
@@ -59,15 +59,49 @@ predicted_gross_4w_if_purchase(x) = E[ 4주 할인 전 총구매액 | 4주 안�
 - 주문 원장(`raw.sqlite`)을 주면 4주 구매 횟수와 총구매액을 원장의 `gross_minor` 합계와 고객별로 대조한다.
 - 52주 정답을 13으로 나누어 쓰지 않는다. 52주 두 파트 모델의 `expected_amount_if_purchase`도 재사용하지 않는다.
 
+### 후보 모델
+
+52주 모델에서 4주 몫을 잘라 쓰지 않는다. 52주 값은 비구매 고객의 0원이 섞인 기댓값이라, 결합식에 넣으면 구매 확률이
+두 번 곱해진다. 대신 같은 입력으로 4주 조건부 금액을 직접 학습하는 후보 넷을 모두 번들에 저장한다.
+
+| 후보(단순한 순서) | 내용 | 주문 원장 |
+| --- | --- | --- |
+| `mean_gross_4w` | Train 구매 고객의 평균 총구매액(상수). 비교 기준 | 필요 없음 |
+| `gamma_gamma_gross_4w` | Gamma-Gamma 기대 거래 금액 × Train 배율. 52주 BG/NBD + GG와 같은 모형·보정 기간(13주)을 할인 전 금액으로 적합 | 필요 |
+| `xgboost_gross_4w` | XGBoost, 제곱오차 손실 | 필요 없음 |
+| `xgboost_gamma_gross_4w` | XGBoost, gamma 손실. 금액이 0인 구매 고객이 있으면 학습하지 않는다(`skipped`) | 필요 없음 |
+
+추론에서는 `gross_4w_model`(CLI `--gross-4w-model`)로 어느 후보든 고를 수 있다. 생략하면 아래 규칙으로 고른 기본
+모델이다. 쓴 후보는 4주 batch의 `model_version`(`clv-<버전>+<후보>.<체크섬>`)과 `producer_metadata.gross_4w`에 남는다.
+
+### 기본 모델 선택 규칙
+
+1. **지표: 제곱오차.** 결합식(`uplift_4w × 4주 금액`)에는 기대값이 필요하다. 평균을 맞히는 예측을 가장 좋게 평가하는
+   손실이 제곱오차다. MAE는 중앙값을 맞히는 예측을 좋게 평가하므로 쓰지 않는다.
+2. **추정: 반복 K겹 교차검증.** Test를 뺀 Train + Validation 구매 고객으로 고객 단위 5겹 교차검증을 3번 반복한다.
+   - 겹마다 후보를 처음부터 다시 학습하고, 학습에 쓰지 않은 겹을 예측한다.
+   - XGBoost는 겹의 학습 고객 안에서 다시 검증 고객을 떼어 설정과 트리 수를 고른다(중첩 교차검증).
+   - 검증 고객 한 묶음(수백 명)만으로 고르면 금액 꼬리가 길어 결과가 잡음에 흔들린다. 그래서 이 방법을 쓴다.
+3. **결정: 1-표준오차 규칙.** 평균 제곱오차가 가장 낮은 후보와의 차이가 그 차이의 표준오차 안에 드는 후보 중 가장
+   단순한 것을 고른다. 표준오차는 같은 고객끼리 짝지은 오차 차이로 계산한다. 더 복잡한 후보는 잡음보다 확실히 나을
+   때만 기본 모델이 된다.
+4. **보고: Test.** Test 구매 고객은 선택에 쓰지 않는다. 후보마다 MAE·RMSE·편향·순위상관·실제/예측 평균과 고객 단위
+   Bootstrap 95% 구간을 남긴다(`registry.json`의 `gross_4w.candidate_test_metrics`).
+
+교차검증 표(후보별 평균 제곱오차, 최선과의 차이, 표준오차, 규칙 안 여부, 교차검증 예측 평균)는
+`registry.json`의 `gross_4w.selection`에 있다. `gross_4w_final_model`을 후보 이름으로 주면 규칙 대신 그 후보를 기본으로 쓴다.
+
 ### 학습·평가
 
 - 학습 대상은 Control, 4주 관측 완전, 4주 안 구매 1회 이상을 모두 만족하는 고객이다.
-- 52주 모델과 같은 고객 단위 분할(Train/Validation/Test)을 쓴다. 설정은 Validation RMSE로 고른다.
-- 금액이 0인 구매 고객도 정답으로 쓴다. 이때는 0을 다룰 수 없는 `reg:gamma` 후보를 빼고 기록한다.
+- 52주 모델과 같은 고객 단위 분할(Train/Validation/Test)을 쓴다. 최종 후보는 Train으로 적합한다. XGBoost 후보는
+  Validation RMSE로 설정과 트리 수를 고른다.
+- 금액이 0인 구매 고객도 정답으로 쓴다. 이때는 0을 다룰 수 없는 `xgboost_gamma_gross_4w`를 학습하지 않고 기록한다.
 - 쿠폰 미발송 조건으로 정의한 모델이라 `observed_experiment_mix` 정책에서는 학습하지 않는다(`skipped`).
 - 학습 시점 `t0`는 실험 시각(`as_of_at`)이 기본이다. 4주 구간이 쿠폰 유효기간(28일)·Uplift 구간과 같아야 하기 때문이다.
 - 평가는 Control Test 고객 중 4주 안에 실제로 구매한 고객으로 한다. 지표는 MAE, RMSE, 평가 고객 수, 실제 평균
-  총구매액, 예측 평균 총구매액이다(`reports/evaluation.json`의 `gross_4w`).
+  총구매액, 예측 평균 총구매액이다(`reports/evaluation.json`의 `gross_4w`는 기본 모델, `candidates_test`는 후보 전부).
+  `python -m clv evaluate`도 평가 대상 구매 고객으로 후보마다 같은 지표를 낸다(`gross_4w.candidates`).
 - 배정군 진단(`gross_4w.assignment_diagnostic`): Treatment와 Control의 구매자당 4주 할인 전 총구매액을 비교한다.
   구매 고객 수·비율, 평균·중앙값, 차이와 95% 구간(Welch 정규 근사), 비율, 모델 예측 평균을 남긴다. Treatment는 이
   진단에만 쓰고 4주 모델 학습에는 쓰지 않는다.
